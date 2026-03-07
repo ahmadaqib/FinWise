@@ -5,7 +5,12 @@ import '../models/user_profile.dart';
 class UserProfileRepository {
   static const String boxName = 'user_profile';
   static const String profileKey = 'main_profile';
-  static const String _geminiApiKeyStorageKey = 'gemini_api_key';
+  static const String _geminiApiKeyStorageKey =
+      'gemini_api_key'; // Ini JANGAN diisi API key, ini cuma NAMA KUNCI penyimpanan
+
+  // Anda bisa menaruh default/hardcoded API key(s) di sini dipisah koma untuk rotasi
+  static const String hardcodedApiKeys =
+      'AIzaSyADbtUw7nYi0rosPd9lVUdQskQ8K2wzfJU';
 
   final _secureStorage = const FlutterSecureStorage();
 

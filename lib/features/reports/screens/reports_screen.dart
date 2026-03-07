@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../providers/transaction_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../services/pdf_export_service.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -22,6 +23,7 @@ class ReportsScreen extends ConsumerWidget {
     }
 
     final totalExpense = expenses.fold(0.0, (sum, t) => sum + t.amount);
+    final now = DateTime.now();
 
     return Scaffold(
       appBar: AppBar(
@@ -29,8 +31,27 @@ class ReportsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(LucideIcons.download),
-            onPressed: () {
-              // PDF export logic here
+            onPressed: () async {
+              try {
+                final file = await PdfExportService.generateMonthlyReport(
+                  now.month,
+                  now.year,
+                  transactions,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('PDF berhasil disimpan ke: ${file.path}'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal mengekspor PDF: $e')),
+                  );
+                }
+              }
             },
           ),
         ],
