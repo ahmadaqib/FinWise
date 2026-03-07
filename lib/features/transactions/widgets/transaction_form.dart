@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../providers/transaction_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class TransactionForm extends ConsumerStatefulWidget {
   const TransactionForm({super.key});
@@ -20,6 +24,7 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
   String _type = 'expense';
   String _category = AppConstants.defaultCategories.first['name']!;
   DateTime _date = DateTime.now();
+  XFile? _imageFile;
 
   @override
   void dispose() {
@@ -28,10 +33,18 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
     super.dispose();
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: source);
+    if (picked != null) {
+      setState(() => _imageFile = picked);
+    }
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = double.tryParse(_amountCtrl.text) ?? 0;
+    final amount = CurrencyFormatter.parse(_amountCtrl.text);
 
     ref
         .read(transactionProvider.notifier)
@@ -41,6 +54,7 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
           _category,
           _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
           _date,
+          tempImagePath: _imageFile?.path,
         );
 
     Navigator.of(context).pop();
@@ -89,6 +103,7 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
                 prefixText: 'Rp ',
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [CurrencyInputFormatter()],
               style: const TextStyle(fontFamily: 'JetBrainsMono'),
               validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
             ),
@@ -136,6 +151,64 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
                 child: Text('${_date.day}/${_date.month}/${_date.year}'),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Receipt Photo Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Foto Struk (Opsional)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _pickImage(ImageSource.gallery),
+                      icon: const Icon(LucideIcons.image, size: 20),
+                      color: AppColors.primary,
+                    ),
+                    IconButton(
+                      onPressed: () => _pickImage(ImageSource.camera),
+                      icon: const Icon(LucideIcons.camera, size: 20),
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            if (_imageFile != null) ...[
+              const SizedBox(height: 8),
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: FileImage(File(_imageFile!.path)),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => setState(() => _imageFile = null),
+                    icon: const CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      radius: 12,
+                      child: Icon(LucideIcons.x, size: 14, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ],
 
             const SizedBox(height: 32),
             ElevatedButton(

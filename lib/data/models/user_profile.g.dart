@@ -23,13 +23,14 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       cicilanMonth1: fields[3] as double,
       cicilanNormal: fields[4] as double,
       isMonth1: fields[5] as bool,
+      cicilanDueDay: fields[6] == null ? 24 : fields[6] as int,
     );
   }
 
   @override
   void write(BinaryWriter writer, UserProfile obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class UserProfileAdapter extends TypeAdapter<UserProfile> {
       ..writeByte(4)
       ..write(obj.cicilanNormal)
       ..writeByte(5)
-      ..write(obj.isMonth1);
+      ..write(obj.isMonth1)
+      ..writeByte(6)
+      ..write(obj.cicilanDueDay);
   }
 
   @override

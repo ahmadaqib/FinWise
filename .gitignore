@@ -46,4 +46,5 @@ app.*.map.json
 /.agent
 /PRD
 CONTEXT.md
-finwise-implementation.md
+finwise-implementation.
+memory.md

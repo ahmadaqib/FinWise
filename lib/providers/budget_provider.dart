@@ -1,6 +1,12 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import '../data/repositories/user_profile_repository.dart';
 import '../core/utils/date_utils.dart';
+import 'package:home_widget/home_widget.dart';
+import '../core/utils/currency_formatter.dart';
 import 'income_provider.dart';
 import 'transaction_provider.dart';
 
@@ -63,3 +69,40 @@ final healthScoreProvider = Provider<int>((ref) {
   if (ratio <= 1.00) return 25;
   return 0; // Overspending
 });
+
+// Sync data to Android Home Widget
+final homeWidgetSyncProvider = Provider<void>((ref) {
+  final remaining = ref.watch(remainingBudgetProvider);
+  final dailyLimit = ref.watch(dailySafeLimitProvider);
+
+  unawaited(
+    _syncHomeWidgetData(
+      remainingBudget: CurrencyFormatter.format(remaining),
+      dailyLimit: CurrencyFormatter.format(dailyLimit),
+    ),
+  );
+});
+
+Future<void> _syncHomeWidgetData({
+  required String remainingBudget,
+  required String dailyLimit,
+}) async {
+  if (kIsWeb) return;
+  if (defaultTargetPlatform != TargetPlatform.android &&
+      defaultTargetPlatform != TargetPlatform.iOS) {
+    return;
+  }
+
+  try {
+    await HomeWidget.saveWidgetData<String>('remainingBudget', remainingBudget);
+    await HomeWidget.saveWidgetData<String>('dailyLimit', dailyLimit);
+    await HomeWidget.updateWidget(
+      name: 'DashboardWidgetProvider',
+      iOSName: 'DashboardWidget',
+    );
+  } on MissingPluginException {
+    // Plugin may be unavailable in some runtime contexts (e.g. hot restart).
+  } catch (_) {
+    // Intentionally ignore non-critical widget sync failures.
+  }
+}

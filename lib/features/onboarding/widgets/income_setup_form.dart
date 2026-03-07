@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/user_profile.dart';
 import '../../../data/models/income_source.dart';
 import '../../../data/repositories/user_profile_repository.dart';
@@ -16,10 +17,10 @@ class IncomeSetupForm extends StatefulWidget {
 class _IncomeSetupFormState extends State<IncomeSetupForm> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _gaji1Ctrl = TextEditingController(text: '4750000');
-  final _gaji2Ctrl = TextEditingController(text: '2500000');
-  final _cicilan1Ctrl = TextEditingController(text: '3000000');
-  final _cicilanNormalCtrl = TextEditingController(text: '2000000');
+  final _gaji1Ctrl = TextEditingController(text: '4.750.000');
+  final _gaji2Ctrl = TextEditingController(text: '2.500.000');
+  final _cicilan1Ctrl = TextEditingController(text: '3.000.000');
+  final _cicilanNormalCtrl = TextEditingController(text: '2.000.000');
   final _geminiKeyCtrl = TextEditingController();
 
   bool _isLoading = false;
@@ -43,16 +44,16 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
     final repo = UserProfileRepository();
     final incomeRepo = IncomeSourceRepository();
 
-    final gaji1 = double.tryParse(_gaji1Ctrl.text) ?? 4750000;
-    final gaji2 = double.tryParse(_gaji2Ctrl.text) ?? 2500000;
+    final gaji1 = CurrencyFormatter.parse(_gaji1Ctrl.text);
+    final gaji2 = CurrencyFormatter.parse(_gaji2Ctrl.text);
 
     // Save Profile
     final profile = UserProfile(
       name: _nameCtrl.text,
       fixedIncome1: gaji1,
       fixedIncome2: gaji2,
-      cicilanMonth1: double.tryParse(_cicilan1Ctrl.text) ?? 3000000,
-      cicilanNormal: double.tryParse(_cicilanNormalCtrl.text) ?? 2000000,
+      cicilanMonth1: CurrencyFormatter.parse(_cicilan1Ctrl.text),
+      cicilanNormal: CurrencyFormatter.parse(_cicilanNormalCtrl.text),
       isMonth1: true,
     );
     await repo.saveProfile(profile);
@@ -119,6 +120,7 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
+            inputFormatters: [CurrencyInputFormatter()],
             style: const TextStyle(fontFamily: 'JetBrainsMono'),
           ),
           const SizedBox(height: 16),
@@ -129,6 +131,7 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
+            inputFormatters: [CurrencyInputFormatter()],
             style: const TextStyle(fontFamily: 'JetBrainsMono'),
           ),
           const SizedBox(height: 16),
@@ -139,6 +142,7 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
+            inputFormatters: [CurrencyInputFormatter()],
             style: const TextStyle(fontFamily: 'JetBrainsMono'),
           ),
           const SizedBox(height: 16),
@@ -149,6 +153,7 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
+            inputFormatters: [CurrencyInputFormatter()],
             style: const TextStyle(fontFamily: 'JetBrainsMono'),
           ),
           const SizedBox(height: 16),

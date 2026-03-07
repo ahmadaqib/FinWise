@@ -12,11 +12,11 @@ class GeminiService {
 
   // Daftar model yang akan diputar (rotate model agar aman jika limit)
   final List<String> _models = [
-    'gemini-2.5-flash', // Model generasi terbaru yang sangat cepat dan pintar
-    'gemini-2.0-flash-lite', // Model ringan dan super cepat generasi 2
-    'gemini-1.5-flash', // Fallback flash yang populer
-    'gemini-1.5-pro', // Fallback untuk reasoning berat
-    'gemini-1.5-flash-8b', // Fallback terakhir
+    'gemini-2.5-flash', // Prioritas utama (cepat + kualitas tinggi)
+    'gemini-2.0-flash', // Fallback seri 2 yang umum
+    'gemini-2.0-flash-exp', // Fallback experimental
+    'gemini-2.0-flash-lite', // Fallback ringan
+    'gemma-3-1b-it', // Fallback Gemma (instruction-tuned)
   ];
 
   Future<List<String>> _getApiKeys() async {
@@ -37,7 +37,7 @@ class GeminiService {
     return keys;
   }
 
-  Future<String> askAdvisor(String prompt) async {
+  Future<String> askAdvisor(String userMessage, {String? systemContext}) async {
     final apiKeys = await _getApiKeys();
 
     if (apiKeys.isEmpty) {
@@ -45,20 +45,27 @@ class GeminiService {
     }
 
     // Strategi ROTASI: Coba kombinasi (Semua API Key) x (Semua Model)
-    // Agar sangat aman dari error Rate Limit / Quota Exceeded (429)
     for (String apiKey in apiKeys) {
       for (String modelName in _models) {
         try {
-          final model = GenerativeModel(model: modelName, apiKey: apiKey);
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+            systemInstruction: systemContext != null
+                ? Content.text(systemContext)
+                : null,
+          );
 
-          final response = await model.generateContent([Content.text(prompt)]);
+          final response = await model.generateContent([
+            Content.text(userMessage),
+          ]);
 
           if (response.text != null && response.text!.isNotEmpty) {
             return response.text!;
           }
         } catch (e) {
           final errorMessage = e.toString().toLowerCase();
-          // Jika error adalah quota/rate limit (sebisa mungkin kita rotate API key/Model)
+          // Jika error adalah quota/rate limit, lanjut rotasi key/model.
           if (errorMessage.contains('429') ||
               errorMessage.contains('quota') ||
               errorMessage.contains('exhausted')) {
@@ -68,7 +75,17 @@ class GeminiService {
             continue; // Coba model/key selanjutnya
           }
 
-          // Jika error lain (misal offline/timeout), jangan langsung skip, tapi return error
+          // Model tidak tersedia/unsupported untuk versi API tertentu -> rotasi saja.
+          if (errorMessage.contains('not found for api version') ||
+              errorMessage.contains('is not supported for generatecontent') ||
+              errorMessage.contains('unsupported')) {
+            debugPrint(
+              'Model $modelName tidak tersedia, mencoba model lain...',
+            );
+            continue;
+          }
+
+          // Error lain (misal offline/timeout) dicatat, lalu tetap coba kombinasi lain.
           debugPrint('Gagal menghasilkan AI (bukan rate limit): $e');
         }
       }

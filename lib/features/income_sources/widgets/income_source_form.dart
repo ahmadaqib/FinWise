@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../providers/income_provider.dart';
 import '../../../../data/models/income_source.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/currency_formatter.dart';
 
 class IncomeSourceForm extends ConsumerStatefulWidget {
   final String? incomeId;
@@ -35,9 +37,13 @@ class _IncomeSourceFormState extends ConsumerState<IncomeSourceForm> {
       _existingSource = incomes.firstWhere((i) => i.id == widget.incomeId);
 
       _nameCtrl = TextEditingController(text: _existingSource!.name);
-      _amountCtrl = TextEditingController(
-        text: _existingSource!.amount.toStringAsFixed(0),
-      );
+
+      // Use a simple decimal pattern for initial text to avoid 'Rp' prefix interference
+      final initialAmount = NumberFormat.decimalPattern(
+        'id_ID',
+      ).format(_existingSource!.amount);
+      _amountCtrl = TextEditingController(text: initialAmount);
+
       _dayCtrl = TextEditingController(
         text: _existingSource!.receivedOnDay.toString(),
       );
@@ -61,7 +67,7 @@ class _IncomeSourceFormState extends ConsumerState<IncomeSourceForm> {
     if (!_formKey.currentState!.validate()) return;
 
     final name = _nameCtrl.text;
-    final amount = double.tryParse(_amountCtrl.text) ?? 0;
+    final amount = CurrencyFormatter.parse(_amountCtrl.text);
     final day = int.tryParse(_dayCtrl.text) ?? 1;
 
     if (_isEditing) {
@@ -133,6 +139,7 @@ class _IncomeSourceFormState extends ConsumerState<IncomeSourceForm> {
                 prefixText: 'Rp ',
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [CurrencyInputFormatter()],
               style: const TextStyle(fontFamily: 'JetBrainsMono'),
               validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
             ),

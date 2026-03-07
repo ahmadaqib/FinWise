@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -45,6 +46,9 @@ class TransactionListScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final t = transactions[index];
                 return ListTile(
+                  onTap: t.imageRef != null
+                      ? () => _showImage(context, t.imageRef!)
+                      : null,
                   leading: CircleAvatar(
                     backgroundColor: t.type == 'income'
                         ? AppColors.successBg
@@ -59,9 +63,21 @@ class TransactionListScreen extends ConsumerWidget {
                       size: 20,
                     ),
                   ),
-                  title: Text(
-                    t.category,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  title: Row(
+                    children: [
+                      Text(
+                        t.category,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      if (t.imageRef != null) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          LucideIcons.camera,
+                          size: 14,
+                          color: AppColors.textMuted,
+                        ),
+                      ],
+                    ],
                   ),
                   subtitle: Text(
                     '${AppDateUtils.formatToIndonesianDate(t.date)}${t.note != null ? '\n${t.note}' : ''}',
@@ -93,6 +109,32 @@ class TransactionListScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const TransactionForm(),
+    );
+  }
+
+  void _showImage(BuildContext context, String imagePath) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.file(File(imagePath), fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 16),
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Icon(LucideIcons.x, color: Colors.black),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

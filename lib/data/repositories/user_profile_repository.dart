@@ -10,7 +10,7 @@ class UserProfileRepository {
 
   // Anda bisa menaruh default/hardcoded API key(s) di sini dipisah koma untuk rotasi
   static const String hardcodedApiKeys =
-      'AIzaSyADbtUw7nYi0rosPd9lVUdQskQ8K2wzfJU';
+      'AIzaSyAKiFbTx9TwtgZlQkxO1ZuO3Og1wRefPYY';
 
   final _secureStorage = const FlutterSecureStorage();
 

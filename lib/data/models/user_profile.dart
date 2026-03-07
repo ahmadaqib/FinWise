@@ -22,6 +22,9 @@ class UserProfile extends HiveObject {
   @HiveField(5)
   bool isMonth1;
 
+  @HiveField(6, defaultValue: 24)
+  int cicilanDueDay; // Tanggal jatuh tempo cicilan (1-31)
+
   UserProfile({
     required this.name,
     this.fixedIncome1 = 4750000,
@@ -29,5 +32,6 @@ class UserProfile extends HiveObject {
     this.cicilanMonth1 = 3000000,
     this.cicilanNormal = 2000000,
     this.isMonth1 = true,
+    this.cicilanDueDay = 24,
   });
 }

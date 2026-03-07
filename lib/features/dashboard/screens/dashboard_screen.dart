@@ -6,7 +6,10 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../providers/budget_provider.dart';
+import '../../../providers/daily_insight_provider.dart';
+import '../../../providers/rpd_counter_provider.dart';
 import '../../../data/repositories/user_profile_repository.dart';
+import '../../transactions/widgets/transaction_form.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -19,6 +22,11 @@ class DashboardScreen extends ConsumerWidget {
     final remaining = ref.watch(remainingBudgetProvider);
     final dailyLimit = ref.watch(dailySafeLimitProvider);
     final cicilan = ref.watch(currentCicilanProvider);
+    final insightAsync = ref.watch(dailyInsightProvider);
+    final rpdRemaining = ref.watch(rpdRemainingProvider);
+
+    // Watch home widget sync provider so it automatically triggers on change
+    ref.watch(homeWidgetSyncProvider);
 
     final profile = UserProfileRepository().getProfile();
     final name = profile?.name ?? 'User';
@@ -118,6 +126,90 @@ class DashboardScreen extends ConsumerWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Daily Insight Card
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.lightbulb,
+                                size: 18,
+                                color: AppColors.warning,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Insight Hari Ini',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: rpdRemaining > 5
+                                  ? AppColors.successBg
+                                  : (rpdRemaining > 0
+                                        ? AppColors.warningBg
+                                        : AppColors.dangerBg),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '🔋 $rpdRemaining/20',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: rpdRemaining > 5
+                                    ? AppColors.success
+                                    : (rpdRemaining > 0
+                                          ? AppColors.warning
+                                          : AppColors.danger),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      insightAsync.when(
+                        data: (insight) => Text(
+                          insight ??
+                              'Belum ada insight. Akan di-generate otomatis.',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                            height: 1.6,
+                          ),
+                        ),
+                        loading: () => const Center(
+                          child: SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                        error: (_, _) => const Text(
+                          'Gagal memuat insight.',
+                          style: TextStyle(color: AppColors.danger),
                         ),
                       ),
                     ],
@@ -297,7 +389,12 @@ class DashboardScreen extends ConsumerWidget {
               // Quick Add
               ElevatedButton.icon(
                 onPressed: () {
-                  // Open quick add bottom sheet
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const TransactionForm(),
+                  );
                 },
                 icon: const Icon(LucideIcons.plusCircle, color: Colors.white),
                 label: const Text(
