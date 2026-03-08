@@ -6,11 +6,7 @@ class UserProfileRepository {
   static const String boxName = 'user_profile';
   static const String profileKey = 'main_profile';
   static const String _geminiApiKeyStorageKey =
-      'gemini_api_key'; // Ini JANGAN diisi API key, ini cuma NAMA KUNCI penyimpanan
-
-  // Anda bisa menaruh default/hardcoded API key(s) di sini dipisah koma untuk rotasi
-  static const String hardcodedApiKeys =
-      'AIzaSyAKiFbTx9TwtgZlQkxO1ZuO3Og1wRefPYY';
+      'gemini_api_key'; // Nama kunci penyimpanan di secure storage.
 
   final _secureStorage = const FlutterSecureStorage();
 

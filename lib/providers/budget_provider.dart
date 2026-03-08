@@ -42,10 +42,24 @@ final totalExpenseThisMonthProvider = Provider<double>((ref) {
       .fold(0.0, (sum, t) => sum + t.amount);
 });
 
+final totalIncomeThisMonthProvider = Provider<double>((ref) {
+  final transactions = ref.watch(transactionProvider);
+  final now = DateTime.now();
+  return transactions
+      .where(
+        (t) =>
+            t.type == 'income' &&
+            t.date.year == now.year &&
+            t.date.month == now.month,
+      )
+      .fold(0.0, (sum, t) => sum + t.amount);
+});
+
 final remainingBudgetProvider = Provider<double>((ref) {
   final freeBudget = ref.watch(freeBudgetProvider);
+  final incomeTransactions = ref.watch(totalIncomeThisMonthProvider);
   final expense = ref.watch(totalExpenseThisMonthProvider);
-  return freeBudget - expense;
+  return freeBudget + incomeTransactions - expense;
 });
 
 final dailySafeLimitProvider = Provider<double>((ref) {
@@ -57,9 +71,13 @@ final dailySafeLimitProvider = Provider<double>((ref) {
 
 final healthScoreProvider = Provider<int>((ref) {
   final freeBudget = ref.watch(freeBudgetProvider);
-  if (freeBudget <= 0) return 0; // Prevent division by zero if no free budget
+  final incomeTransactions = ref.watch(totalIncomeThisMonthProvider);
+  final totalAvailable = freeBudget + incomeTransactions;
 
-  final ratio = ref.watch(totalExpenseThisMonthProvider) / freeBudget;
+  if (totalAvailable <= 0)
+    return 0; // Prevent division by zero if no budget at all
+
+  final ratio = ref.watch(totalExpenseThisMonthProvider) / totalAvailable;
   if (ratio.isNaN || ratio.isInfinite) return 100;
   if (ratio <= 0.50) return 100;
   if (ratio <= 0.70) return 75;

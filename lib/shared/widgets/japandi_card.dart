@@ -5,6 +5,7 @@ import '../../../core/theme/app_animations.dart';
 class JapandiCard extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final EdgeInsetsGeometry padding;
   final bool hasBorder;
   final Color? backgroundColor;
@@ -13,6 +14,7 @@ class JapandiCard extends StatefulWidget {
     super.key,
     required this.child,
     this.onTap,
+    this.onLongPress,
     this.padding = const EdgeInsets.all(16.0),
     this.hasBorder = true,
     this.backgroundColor,
@@ -84,7 +86,7 @@ class _JapandiCardState extends State<JapandiCard>
       child: Padding(padding: widget.padding, child: widget.child),
     );
 
-    if (widget.onTap != null) {
+    if (widget.onTap != null || widget.onLongPress != null) {
       cardWidget = MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
@@ -93,6 +95,7 @@ class _JapandiCardState extends State<JapandiCard>
           onTapUp: _onTapUp,
           onTapCancel: _onTapCancel,
           onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
           behavior: HitTestBehavior.opaque,
           child: ScaleTransition(scale: _scaleAnimation, child: cardWidget),
         ),

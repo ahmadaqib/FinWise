@@ -9,8 +9,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
+import '../../../../data/models/transaction.dart';
+
 class TransactionForm extends ConsumerStatefulWidget {
-  const TransactionForm({super.key});
+  final Transaction? initialTransaction;
+
+  const TransactionForm({super.key, this.initialTransaction});
 
   @override
   ConsumerState<TransactionForm> createState() => _TransactionFormState();
@@ -26,10 +30,29 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
   DateTime _date = DateTime.now();
   XFile? _imageFile;
 
+  String? _existingImageRef;
+
   @override
   void initState() {
     super.initState();
-    _category = AppConstants.expenseCategories.first['name']!;
+    if (widget.initialTransaction != null) {
+      final t = widget.initialTransaction!;
+      _amountCtrl.text = t.amount.toStringAsFixed(0);
+      _noteCtrl.text = t.note ?? '';
+      _type = t.type;
+
+      final categories = _type == 'expense'
+          ? AppConstants.expenseCategories
+          : AppConstants.incomeCategories;
+
+      final categoryExists = categories.any((c) => c['name'] == t.category);
+      _category = categoryExists ? t.category : categories.first['name']!;
+
+      _date = t.date;
+      _existingImageRef = t.imageRef;
+    } else {
+      _category = AppConstants.expenseCategories.first['name']!;
+    }
   }
 
   @override
@@ -52,16 +75,34 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
 
     final amount = CurrencyFormatter.parse(_amountCtrl.text);
 
-    ref
-        .read(transactionProvider.notifier)
-        .addTransaction(
-          amount,
-          _type,
-          _category,
-          _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
-          _date,
-          tempImagePath: _imageFile?.path,
-        );
+    if (widget.initialTransaction != null) {
+      // Update existing
+      final updatedTransaction = widget.initialTransaction!.copyWith(
+        amount: amount,
+        type: _type,
+        category: _category,
+        note: _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
+        date: _date,
+      );
+
+      ref
+          .read(transactionProvider.notifier)
+          .updateTransaction(
+            updatedTransaction,
+            tempImagePath: _imageFile?.path,
+          );
+    } else {
+      ref
+          .read(transactionProvider.notifier)
+          .addTransaction(
+            amount,
+            _type,
+            _category,
+            _noteCtrl.text.isEmpty ? null : _noteCtrl.text,
+            _date,
+            tempImagePath: _imageFile?.path,
+          );
+    }
 
     Navigator.of(context).pop();
   }
@@ -89,9 +130,11 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Tambah Transaksi Baru',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              widget.initialTransaction != null
+                  ? 'Edit Transaksi'
+                  : 'Tambah Transaksi Baru',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
 
@@ -226,10 +269,44 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
               ),
             ],
 
+            if (_existingImageRef != null && _imageFile == null) ...[
+              const SizedBox(height: 8),
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  Container(
+                    height: 120,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: FileImage(File(_existingImageRef!)),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => setState(
+                      () => _existingImageRef = null,
+                    ), // Remove old image
+                    icon: const CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      radius: 12,
+                      child: Icon(LucideIcons.x, size: 14, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: _submit,
-              child: const Text('Catat Transaksi'),
+              child: Text(
+                widget.initialTransaction != null
+                    ? 'Simpan Perubahan'
+                    : 'Catat Transaksi',
+              ),
             ),
           ],
         ),

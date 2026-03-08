@@ -35,7 +35,7 @@ class TransactionListScreen extends ConsumerWidget {
             )
           : Stack(
               children: [
-                _buildTransactionList(context, transactions, isDark),
+                _buildTransactionList(context, ref, transactions, isDark),
                 _buildBottomStickyCTA(context, isDark),
               ],
             ),
@@ -44,6 +44,7 @@ class TransactionListScreen extends ConsumerWidget {
 
   Widget _buildTransactionList(
     BuildContext context,
+    WidgetRef ref,
     List<Transaction> transactions,
     bool isDark,
   ) {
@@ -97,7 +98,7 @@ class TransactionListScreen extends ConsumerWidget {
               ),
             ),
             ...dailyTransactions.map(
-              (t) => _buildTransactionCard(context, t, isDark),
+              (t) => _buildTransactionCard(context, ref, t, isDark),
             ),
           ],
         );
@@ -107,6 +108,7 @@ class TransactionListScreen extends ConsumerWidget {
 
   Widget _buildTransactionCard(
     BuildContext context,
+    WidgetRef ref,
     Transaction t,
     bool isDark,
   ) {
@@ -126,11 +128,11 @@ class TransactionListScreen extends ConsumerWidget {
       child: JapandiCard(
         padding: const EdgeInsets.all(AppSpacing.md),
         onTap: () {
-          // If has image, show image maybe? For now just show image if it exists
           if (t.imageRef != null) {
             _showImage(context, t.imageRef!);
           }
         },
+        onLongPress: () => _showActionSheet(context, ref, t),
         child: Row(
           children: [
             Container(
@@ -255,12 +257,77 @@ class TransactionListScreen extends ConsumerWidget {
     );
   }
 
-  void _openForm(BuildContext context) {
+  void _openForm(BuildContext context, {Transaction? transaction}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const TransactionForm(),
+      builder: (_) => TransactionForm(initialTransaction: transaction),
+    );
+  }
+
+  void _showActionSheet(BuildContext context, WidgetRef ref, Transaction t) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(LucideIcons.edit2, color: AppColors.primary),
+              title: const Text('Edit Transaksi'),
+              onTap: () {
+                Navigator.pop(context);
+                _openForm(context, transaction: t);
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.trash2, color: AppColors.danger),
+              title: const Text('Hapus Transaksi'),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmDelete(context, ref, t);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, Transaction t) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Transaksi?'),
+        content: const Text('Tindakan ini tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(transactionProvider.notifier).deleteTransaction(t.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Transaksi berhasil dihapus')),
+              );
+            },
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: AppColors.danger),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

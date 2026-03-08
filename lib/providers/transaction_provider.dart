@@ -60,8 +60,24 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     _triggerSideEffects();
   }
 
-  Future<void> updateTransaction(Transaction transaction) async {
-    await _repo.updateTransaction(transaction);
+  Future<void> updateTransaction(
+    Transaction transaction, {
+    String? tempImagePath,
+  }) async {
+    String? persistentPath = transaction.imageRef;
+
+    if (tempImagePath != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}${p.extension(tempImagePath)}';
+      final savedImage = await File(
+        tempImagePath,
+      ).copy('${appDir.path}/$fileName');
+      persistentPath = savedImage.path;
+    }
+
+    final updatedTx = transaction.copyWith(imageRef: persistentPath);
+    await _repo.updateTransaction(updatedTx);
     _load();
     _triggerSideEffects();
   }

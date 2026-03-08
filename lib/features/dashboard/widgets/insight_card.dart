@@ -48,7 +48,7 @@ class InsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            insight,
+            insight.replaceAll('**', '').replaceAll('*', ''),
             style: AppTextStyles.body.copyWith(
               color: isDark
                   ? AppColors.textInverseSecondary

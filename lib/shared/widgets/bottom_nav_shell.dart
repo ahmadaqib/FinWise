@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -7,31 +8,26 @@ import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/reports/screens/reports_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/transactions/screens/transaction_list_screen.dart';
+import '../../providers/nav_provider.dart';
 
-class BottomNavShell extends StatefulWidget {
+class BottomNavShell extends ConsumerWidget {
   const BottomNavShell({super.key});
 
-  @override
-  State<BottomNavShell> createState() => _BottomNavShellState();
-}
-
-class _BottomNavShellState extends State<BottomNavShell> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = const [
-    DashboardScreen(),
-    TransactionListScreen(),
-    ReportsScreen(),
-    AiAdvisorScreen(),
-    SettingsScreen(),
+  static final List<Widget> _screens = [
+    const DashboardScreen(),
+    const TransactionListScreen(),
+    const ReportsScreen(),
+    const AiAdvisorScreen(),
+    const SettingsScreen(),
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(navIndexProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: _screens[_currentIndex],
+      body: _screens[currentIndex],
       bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
           backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
@@ -77,16 +73,14 @@ class _BottomNavShellState extends State<BottomNavShell> {
             ),
           ),
           child: NavigationBar(
-            selectedIndex: _currentIndex,
+            selectedIndex: currentIndex,
             onDestinationSelected: (index) =>
-                setState(() => _currentIndex = index),
+                ref.read(navIndexProvider.notifier).state = index,
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: const [
               NavigationDestination(
                 icon: Icon(LucideIcons.home),
-                selectedIcon: Icon(
-                  LucideIcons.layoutGrid,
-                ), // Slightly bolder/different icon for active state
+                selectedIcon: Icon(LucideIcons.layoutGrid),
                 label: 'Beranda',
               ),
               NavigationDestination(
@@ -106,9 +100,7 @@ class _BottomNavShellState extends State<BottomNavShell> {
               ),
               NavigationDestination(
                 icon: Icon(LucideIcons.settings),
-                selectedIcon: Icon(
-                  LucideIcons.settings,
-                ), // Same icon, boldest by theme
+                selectedIcon: Icon(LucideIcons.settings),
                 label: 'Setelan',
               ),
             ],

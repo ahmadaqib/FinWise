@@ -20,15 +20,12 @@ class GeminiService {
   ];
 
   Future<List<String>> _getApiKeys() async {
-    // Ambil kunci dari storage (jika diset lewat UI)
-    String? storedKey = await _repo.getGeminiApiKey();
-
-    // Gabung dengan hardcoded key dari repository
-    String rawKeys =
-        "${UserProfileRepository.hardcodedApiKeys},${storedKey ?? ''}";
+    // Seluruh API key diambil dari secure storage.
+    // Jika user memasukkan beberapa key dipisah koma, semuanya akan dipakai.
+    final rawKeys = await _repo.getGeminiApiKey() ?? '';
 
     // Split dengan koma, bersihkan spasi, dan hapus yang kosong
-    List<String> keys = rawKeys
+    final keys = rawKeys
         .split(',')
         .map((k) => k.trim())
         .where((k) => k.isNotEmpty)
@@ -92,5 +89,59 @@ class GeminiService {
     }
 
     return "Maaf, semua kombinasi API Key dan Model saat ini sedang limit/error. Coba lagi nanti atau tambahkan API key baru.";
+  }
+
+  /// Ask advisor with function calling tools enabled.
+  /// Returns the raw GenerateContentResponse so caller can inspect
+  /// whether it contains text or a FunctionCall.
+  Future<GenerateContentResponse> askAdvisorWithTools(
+    String userMessage, {
+    String? systemContext,
+    required List<Tool> tools,
+  }) async {
+    final apiKeys = await _getApiKeys();
+
+    if (apiKeys.isEmpty) {
+      throw Exception('No API keys configured');
+    }
+
+    // Only use models that support function calling (gemini-2.0-flash+)
+    final fcModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+    for (String apiKey in apiKeys) {
+      for (String modelName in fcModels) {
+        try {
+          final model = GenerativeModel(
+            model: modelName,
+            apiKey: apiKey,
+            systemInstruction: systemContext != null
+                ? Content.text(systemContext)
+                : null,
+            tools: tools,
+          );
+
+          final response = await model.generateContent([
+            Content.text(userMessage),
+          ]);
+
+          return response;
+        } catch (e) {
+          final errorMessage = e.toString().toLowerCase();
+          if (errorMessage.contains('429') ||
+              errorMessage.contains('quota') ||
+              errorMessage.contains('exhausted') ||
+              errorMessage.contains('not found for api version') ||
+              errorMessage.contains('unsupported')) {
+            debugPrint('FC model $modelName rotasi: $e');
+            continue;
+          }
+          debugPrint('FC error (non-recoverable): $e');
+        }
+      }
+    }
+
+    throw Exception(
+      'Semua kombinasi API Key dan Model gagal untuk function calling.',
+    );
   }
 }

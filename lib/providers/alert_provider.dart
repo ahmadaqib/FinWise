@@ -29,8 +29,8 @@ class AlertRuleEngine {
 
   void _checkBudget70() {
     if (!_isRuleEnabled('budget_70')) return;
-    final expense = _ref.watch(totalExpenseThisMonthProvider);
-    final freeBudget = _ref.watch(freeBudgetProvider);
+    final expense = _ref.read(totalExpenseThisMonthProvider);
+    final freeBudget = _ref.read(freeBudgetProvider);
     if (freeBudget <= 0) return;
 
     final ratio = expense / freeBudget;
@@ -46,8 +46,8 @@ class AlertRuleEngine {
 
   void _checkBudget90() {
     if (!_isRuleEnabled('budget_90')) return;
-    final expense = _ref.watch(totalExpenseThisMonthProvider);
-    final freeBudget = _ref.watch(freeBudgetProvider);
+    final expense = _ref.read(totalExpenseThisMonthProvider);
+    final freeBudget = _ref.read(freeBudgetProvider);
     if (freeBudget <= 0) return;
 
     final ratio = expense / freeBudget;
@@ -63,7 +63,7 @@ class AlertRuleEngine {
 
   void _checkDailyLimitExceeded() {
     if (!_isRuleEnabled('daily_limit')) return;
-    final dailyLimit = _ref.watch(dailySafeLimitProvider);
+    final dailyLimit = _ref.read(dailySafeLimitProvider);
     final transactions = _ref.read(transactionProvider);
     final now = DateTime.now();
 

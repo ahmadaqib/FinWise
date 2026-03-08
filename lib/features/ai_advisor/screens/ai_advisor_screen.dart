@@ -6,6 +6,7 @@ import '../../../providers/chat_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../widgets/action_confirmation_card.dart';
 
 class AiAdvisorScreen extends ConsumerStatefulWidget {
   const AiAdvisorScreen({super.key});
@@ -82,6 +83,26 @@ class _AiAdvisorScreenState extends ConsumerState<AiAdvisorScreen> {
                 }
 
                 final msg = messages[index];
+
+                // Render action confirmation card
+                if (msg.isAction) {
+                  return ActionConfirmationCard(
+                    title: msg.action!.displayTitle,
+                    description: msg.action!.displayDescription,
+                    status: msg.actionStatus,
+                    onConfirm: msg.actionStatus == ActionCardStatus.pending
+                        ? () => ref
+                              .read(chatProvider.notifier)
+                              .confirmAction(msg.actionId!)
+                        : null,
+                    onCancel: msg.actionStatus == ActionCardStatus.pending
+                        ? () => ref
+                              .read(chatProvider.notifier)
+                              .cancelAction(msg.actionId!)
+                        : null,
+                  );
+                }
+
                 return _ChatBubble(
                   message: msg.text,
                   isUser: msg.isUser,
@@ -230,7 +251,7 @@ class _ChatBubble extends StatelessWidget {
           ],
         ),
         child: SelectableText(
-          message,
+          message.replaceAll('**', '').replaceAll('*', ''),
           style: AppTextStyles.body.copyWith(
             color: isUser ? userTextColor : botTextColor,
             height: 1.5,

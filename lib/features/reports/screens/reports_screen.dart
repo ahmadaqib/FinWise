@@ -4,6 +4,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../providers/transaction_provider.dart';
+import '../../../providers/report_filter_provider.dart';
+import '../../../providers/budget_provider.dart';
+import '../../../providers/cicilan_provider.dart';
+import '../../../providers/nav_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -19,11 +23,18 @@ class ReportsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transactions = ref.watch(transactionProvider);
-    final now = DateTime.now();
+    final selectedMonth = ref.watch(selectedMonthProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final baseIncome = ref.watch(totalFixedIncomeProvider);
+    final baseCicilan = ref.watch(totalCicilanThisMonthProvider);
+
     final monthlyTransactions = transactions
-        .where((t) => t.date.year == now.year && t.date.month == now.month)
+        .where(
+          (t) =>
+              t.date.year == selectedMonth.year &&
+              t.date.month == selectedMonth.month,
+        )
         .toList();
 
     final expenses = monthlyTransactions
@@ -33,14 +44,19 @@ class ReportsScreen extends ConsumerWidget {
         .where((t) => t.type == 'income')
         .toList();
 
-    final totalExpense = expenses.fold(0.0, (sum, t) => sum + t.amount);
-    final totalIncome = incomes.fold(0.0, (sum, t) => sum + t.amount);
+    final totalExpense =
+        expenses.fold(0.0, (sum, t) => sum + t.amount) + baseCicilan;
+    final totalIncome =
+        incomes.fold(0.0, (sum, t) => sum + t.amount) + baseIncome;
     final netBalance = totalIncome - totalExpense;
 
     // Group expenses by category
     final Map<String, double> expenseCats = {};
     for (var t in expenses) {
       expenseCats[t.category] = (expenseCats[t.category] ?? 0) + t.amount;
+    }
+    if (baseCicilan > 0) {
+      expenseCats['Cicilan Bulanan'] = baseCicilan;
     }
 
     // Group incomes by category
@@ -49,19 +65,39 @@ class ReportsScreen extends ConsumerWidget {
       final cat = t.category.isEmpty ? 'Pemasukan' : t.category;
       incomeCats[cat] = (incomeCats[cat] ?? 0) + t.amount;
     }
+    if (baseIncome > 0) {
+      incomeCats['Pemasukan Tetap'] = baseIncome;
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Laporan')),
+      appBar: AppBar(
+        title: const Text('Laporan'),
+        automaticallyImplyLeading: false,
+      ),
       body: monthlyTransactions.isEmpty
-          ? EmptyState(
-              icon: LucideIcons.pieChart,
-              title: 'Belum ada data laporan',
-              description:
-                  'Catat transaksi pertamamu bulan ini untuk melihat analisanya di sini.',
-              actionLabel: 'Kembali',
-              onAction: () => Navigator.pop(
-                context,
-              ), // Typically would switch to dashboard, but keeping simple
+          ? Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                    AppSpacing.lg,
+                    0,
+                  ),
+                  child: _buildMonthSelector(context, ref, transactions),
+                ),
+                Expanded(
+                  child: EmptyState(
+                    icon: LucideIcons.pieChart,
+                    title: 'Belum ada data laporan',
+                    description:
+                        'Catat transaksi pertamamu bulan ini untuk melihat analisanya di sini.',
+                    actionLabel: 'Kembali ke Beranda',
+                    onAction: () =>
+                        ref.read(navIndexProvider.notifier).state = 0,
+                  ),
+                ),
+              ],
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.symmetric(
@@ -71,7 +107,7 @@ class ReportsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildMonthSelector(context, now, isDark),
+                  _buildMonthSelector(context, ref, transactions),
                   const SizedBox(height: AppSpacing.xl),
 
                   // Net balance hero
@@ -165,8 +201,8 @@ class ReportsScreen extends ConsumerWidget {
                       try {
                         final file =
                             await PdfExportService.generateMonthlyReport(
-                              now.month,
-                              now.year,
+                              selectedMonth.month,
+                              selectedMonth.year,
                               transactions,
                             );
                         if (context.mounted) {
@@ -185,7 +221,7 @@ class ReportsScreen extends ConsumerWidget {
                       }
                     },
                     icon: const Icon(LucideIcons.download),
-                    label: const Text('Unduh Laporan PDF (Bulan Ini)'),
+                    label: const Text('Unduh Laporan PDF'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
                       side: BorderSide(
@@ -200,12 +236,26 @@ class ReportsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMonthSelector(BuildContext context, DateTime now, bool isDark) {
-    final months = [
-      DateTime(now.year, now.month - 2),
-      DateTime(now.year, now.month - 1),
-      now,
-    ];
+  Widget _buildMonthSelector(
+    BuildContext context,
+    WidgetRef ref,
+    List<dynamic> transactions,
+  ) {
+    final selectedMonth = ref.watch(selectedMonthProvider);
+    final now = DateTime.now();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Generate a set of unique year-month combinations from transactions
+    final availableMonths = <DateTime>{
+      DateTime(now.year, now.month), // Always include current month
+    };
+
+    for (var t in transactions) {
+      availableMonths.add(DateTime(t.date.year, t.date.month));
+    }
+
+    // Convert to list and sort descending (newest first)
+    final months = availableMonths.toList()..sort((a, b) => b.compareTo(a));
 
     // Formatting helper
     String formatMonth(DateTime date) {
@@ -230,35 +280,32 @@ class ReportsScreen extends ConsumerWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: months.map((date) {
-          final isCurrent = date.year == now.year && date.month == now.month;
+          final isSelected =
+              date.year == selectedMonth.year &&
+              date.month == selectedMonth.month;
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: FilterChip(
-              selected: isCurrent,
+              selected: isSelected,
               label: Text(formatMonth(date)),
               onSelected: (bool selected) {
-                // In a real app we would update a dateProvider here
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Hanya menampilkan bulan ini pada versi demo',
-                    ),
-                  ),
-                );
+                if (selected) {
+                  ref.read(selectedMonthProvider.notifier).state = date;
+                }
               },
               backgroundColor: Colors.transparent,
               selectedColor: isDark
                   ? AppColors.darkInfoBg
                   : AppColors.primaryMuted,
               labelStyle: AppTextStyles.label.copyWith(
-                color: isCurrent
+                color: isSelected
                     ? (isDark ? AppColors.primaryLight : AppColors.primary)
                     : AppColors.textSecondary,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999), // Pill shape
                 side: BorderSide(
-                  color: isCurrent
+                  color: isSelected
                       ? Colors.transparent
                       : (isDark ? AppColors.darkBorder : AppColors.border),
                 ),

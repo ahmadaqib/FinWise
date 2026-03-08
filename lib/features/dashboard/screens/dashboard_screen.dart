@@ -24,10 +24,13 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final healthScore = ref.watch(healthScoreProvider);
     final freeBudget = ref.watch(freeBudgetProvider);
+    final incomeTransactions = ref.watch(totalIncomeThisMonthProvider);
     final expense = ref.watch(totalExpenseThisMonthProvider);
     final remaining = ref.watch(remainingBudgetProvider);
     final dailyLimit = ref.watch(dailySafeLimitProvider);
     final insightAsync = ref.watch(dailyInsightProvider);
+
+    final totalAvailable = freeBudget + incomeTransactions;
 
     // Watch home widget sync provider so it automatically triggers on change
     ref.watch(homeWidgetSyncProvider);
@@ -57,7 +60,7 @@ class DashboardScreen extends ConsumerWidget {
               BudgetMeterCard(
                 expense: expense,
                 remaining: remaining > 0 ? remaining : 0,
-                totalBudget: freeBudget,
+                totalBudget: totalAvailable,
               ),
 
               const SizedBox(height: AppSpacing.lg),
