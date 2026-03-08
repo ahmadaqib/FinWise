@@ -22,9 +22,15 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
   final _noteCtrl = TextEditingController();
 
   String _type = 'expense';
-  String _category = AppConstants.defaultCategories.first['name']!;
+  late String _category;
   DateTime _date = DateTime.now();
   XFile? _imageFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _category = AppConstants.expenseCategories.first['name']!;
+  }
 
   @override
   void dispose() {
@@ -62,6 +68,10 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
 
   @override
   Widget build(BuildContext context) {
+    final categories = _type == 'expense'
+        ? AppConstants.expenseCategories
+        : AppConstants.incomeCategories;
+
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
@@ -92,7 +102,16 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
                 ButtonSegment(value: 'income', label: Text('Pemasukan')),
               ],
               selected: {_type},
-              onSelectionChanged: (set) => setState(() => _type = set.first),
+              onSelectionChanged: (set) {
+                setState(() {
+                  _type = set.first;
+                  _category =
+                      (_type == 'expense'
+                              ? AppConstants.expenseCategories
+                              : AppConstants.incomeCategories)
+                          .first['name']!;
+                });
+              },
             ),
             const SizedBox(height: 16),
 
@@ -109,24 +128,21 @@ class _TransactionFormState extends ConsumerState<TransactionForm> {
             ),
             const SizedBox(height: 16),
 
-            if (_type == 'expense')
-              DropdownButtonFormField<String>(
-                initialValue: _category,
-                decoration: const InputDecoration(labelText: 'Kategori'),
-                items: AppConstants.defaultCategories
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c['name']!,
-                        child: Text(c['name']!),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _category = v!),
-              )
-            else
-              const SizedBox.shrink(), // Or we could allow income categories
-
-            if (_type == 'expense') const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_type), // Force rebuild when type changes
+              value: _category,
+              decoration: const InputDecoration(labelText: 'Kategori'),
+              items: categories
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c['name']!,
+                      child: Text(c['name']!),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) => setState(() => _category = v!),
+            ),
+            const SizedBox(height: 16),
 
             TextFormField(
               controller: _noteCtrl,

@@ -13,12 +13,15 @@ import 'data/models/side_project.dart';
 import 'data/models/transaction.dart';
 import 'data/models/user_profile.dart';
 import 'data/models/ai_cache.dart';
+import 'data/models/cicilan.dart';
+import 'data/models/cicilan_payment.dart';
 
 import 'data/repositories/income_source_repository.dart';
 import 'data/repositories/transaction_repository.dart';
 import 'data/repositories/user_profile_repository.dart';
 import 'data/repositories/alert_repository.dart';
 import 'data/repositories/ai_cache_repository.dart';
+import 'data/repositories/cicilan_repository.dart';
 import 'providers/rpd_counter_provider.dart';
 
 void main() async {
@@ -37,6 +40,8 @@ void main() async {
   Hive.registerAdapter(MonthlySummaryAdapter());
   Hive.registerAdapter(AlertConfigAdapter());
   Hive.registerAdapter(SideProjectAdapter());
+  Hive.registerAdapter(CicilanAdapter());
+  Hive.registerAdapter(CicilanPaymentAdapter());
   Hive.registerAdapter(AiCacheAdapter());
 
   // Initialize Repositories
@@ -45,6 +50,7 @@ void main() async {
   await TransactionRepository().init();
   await AlertRepository().init();
   await AiCacheRepository().init();
+  await CicilanRepository().init();
   await RpdCounter.init();
   await RpdCounter.cleanup();
 

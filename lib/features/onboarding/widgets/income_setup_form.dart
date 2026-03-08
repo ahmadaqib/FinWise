@@ -5,6 +5,9 @@ import '../../../data/models/income_source.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../../data/repositories/income_source_repository.dart';
 import '../../../shared/widgets/bottom_nav_shell.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import 'package:uuid/uuid.dart';
 
 class IncomeSetupForm extends StatefulWidget {
@@ -99,6 +102,44 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
     }
   }
 
+  InputDecoration _buildInputDecoration(
+    String label,
+    BuildContext context, {
+    String? prefixText,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InputDecoration(
+      labelText: label,
+      prefixText: prefixText,
+      filled: true,
+      fillColor: isDark ? AppColors.darkCard : AppColors.surface,
+      labelStyle: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.border,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: isDark ? AppColors.primaryLight : AppColors.primary,
+          width: 2,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -108,65 +149,79 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
         children: [
           TextFormField(
             controller: _nameCtrl,
-            decoration: const InputDecoration(labelText: 'Nama Panggilan'),
+            decoration: _buildInputDecoration('Nama Panggilan', context),
+            style: AppTextStyles.body,
             validator: (val) =>
                 val == null || val.isEmpty ? 'Wajib diisi' : null,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           TextFormField(
             controller: _gaji1Ctrl,
-            decoration: const InputDecoration(
-              labelText: 'Gaji Tetap 1 (Rp)',
+            decoration: _buildInputDecoration(
+              'Gaji Tetap 1 (Rp)',
+              context,
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [CurrencyInputFormatter()],
-            style: const TextStyle(fontFamily: 'JetBrainsMono'),
+            style: AppTextStyles.mono,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           TextFormField(
             controller: _gaji2Ctrl,
-            decoration: const InputDecoration(
-              labelText: 'Gaji Tetap 2 (Rp)',
+            decoration: _buildInputDecoration(
+              'Gaji Tetap 2 (Rp)',
+              context,
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [CurrencyInputFormatter()],
-            style: const TextStyle(fontFamily: 'JetBrainsMono'),
+            style: AppTextStyles.mono,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           TextFormField(
             controller: _cicilan1Ctrl,
-            decoration: const InputDecoration(
-              labelText: 'Cicilan Bulan Ini (Rp)',
+            decoration: _buildInputDecoration(
+              'Cicilan Bulan Ini (Rp)',
+              context,
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [CurrencyInputFormatter()],
-            style: const TextStyle(fontFamily: 'JetBrainsMono'),
+            style: AppTextStyles.mono,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           TextFormField(
             controller: _cicilanNormalCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Cicilan Normal (Rp)',
+            decoration: _buildInputDecoration(
+              'Cicilan Normal (Rp)',
+              context,
               prefixText: 'Rp ',
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [CurrencyInputFormatter()],
-            style: const TextStyle(fontFamily: 'JetBrainsMono'),
+            style: AppTextStyles.mono,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           TextFormField(
             controller: _geminiKeyCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Gemini API Key (Opsional)',
+            decoration: _buildInputDecoration(
+              'Gemini API Key (Opsional)',
+              context,
             ),
+            style: AppTextStyles.body,
             obscureText: true,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
           ElevatedButton(
             onPressed: _isLoading ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
             child: _isLoading
                 ? const SizedBox(
                     width: 24,
@@ -176,8 +231,15 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Text('Simpan & Masuk'),
+                : Text(
+                    'Simpan & Mulai',
+                    style: AppTextStyles.body.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
           ),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );

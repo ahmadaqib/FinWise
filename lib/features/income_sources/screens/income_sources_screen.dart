@@ -59,7 +59,7 @@ class IncomeSourcesScreen extends ConsumerWidget {
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 4.0),
                       child: Text(
-                        '${income.type} • Tgl ${income.receivedOnDay}',
+                        '${_formatIncomeType(income.type)} • Tgl ${income.receivedOnDay}',
                       ),
                     ),
                     trailing: Text(
@@ -82,6 +82,22 @@ class IncomeSourcesScreen extends ConsumerWidget {
         child: const Icon(LucideIcons.plus, color: Colors.white),
       ),
     );
+  }
+
+  String _formatIncomeType(String rawType) {
+    switch (rawType) {
+      case 'fixed_monthly':
+        return 'Gaji Bulanan Tetap';
+      case 'passive':
+        return 'Pendapatan Pasif';
+      case 'one_time':
+        return 'Pendapatan Sekali Waktu';
+      default:
+        // capitalize first letter
+        if (rawType.isEmpty) return rawType;
+        return rawType[0].toUpperCase() +
+            rawType.substring(1).replaceAll('_', ' ');
+    }
   }
 
   void _openForm(BuildContext context, {String? incomeId}) {

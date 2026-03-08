@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
-import '../data/repositories/user_profile_repository.dart';
 import '../core/utils/date_utils.dart';
 import 'package:home_widget/home_widget.dart';
 import '../core/utils/currency_formatter.dart';
 import 'income_provider.dart';
 import 'transaction_provider.dart';
+import 'cicilan_provider.dart';
 
 final totalFixedIncomeProvider = Provider<double>((ref) {
   final incomes = ref.watch(incomeProvider);
@@ -20,9 +20,7 @@ final totalFixedIncomeProvider = Provider<double>((ref) {
 });
 
 final currentCicilanProvider = Provider<double>((ref) {
-  final profile = UserProfileRepository().getProfile();
-  if (profile == null) return 0.0;
-  return profile.isMonth1 ? profile.cicilanMonth1 : profile.cicilanNormal;
+  return ref.watch(totalCicilanThisMonthProvider);
 });
 
 final freeBudgetProvider = Provider<double>((ref) {

@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../../services/backup_service.dart';
+import '../../../shared/widgets/japandi_card.dart';
+import '../../../shared/widgets/section_header.dart';
 import '../../income_sources/screens/income_sources_screen.dart';
+import '../../cicilan/screens/cicilan_list_screen.dart';
 import 'notification_settings_screen.dart';
 import 'gemini_settings_screen.dart';
+import 'edit_profile_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -14,233 +20,303 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = UserProfileRepository().getProfile();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         children: [
-          Card(
-            child: ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: AppColors.primaryMuted,
-                child: Icon(LucideIcons.user, color: AppColors.primary),
-              ),
-              title: Text(
-                profile?.name ?? 'Profil Anda',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: const Text('Atur profil & gaji'),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                LucideIcons.calendarClock,
-                color: AppColors.primary,
-              ),
-              title: const Text('Tanggal Jatuh Tempo Cicilan'),
-              subtitle: Text('Setiap tanggal ${profile?.cicilanDueDay ?? 25}'),
-              trailing: const Icon(
-                LucideIcons.chevronRight,
-                size: 16,
-                color: AppColors.textMuted,
-              ),
-              onTap: () => _showDueDateDialog(context, profile),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildSettingsGroup('Keuangan'),
-          _buildListTile(context, LucideIcons.wallet, 'Sumber Pendapatan', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const IncomeSourcesScreen()),
-            );
-          }),
-          _buildListTile(
-            context,
-            LucideIcons.bell,
-            'Notifikasi & Peringatan',
-            () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const NotificationSettingsScreen(),
-                ),
-              );
-            },
-          ),
-          _buildListTile(context, LucideIcons.bot, 'Gemini AI Advisor', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const GeminiSettingsScreen()),
-            );
-          }),
-          const SizedBox(height: 24),
-          _buildSettingsGroup('Sistem'),
-          _buildListTile(
-            context,
-            LucideIcons.download,
-            'Ekspor Data JSON',
-            () async {
-              try {
-                final file = await BackupService.exportDataToJson();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Backup JSON tersimpan: ${file.path}'),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Gagal backup: $e')));
-                }
-              }
-            },
-          ),
-          _buildListTile(
-            context,
-            LucideIcons.trash2,
-            'Hapus Semua Data',
-            () async {
-              await BackupService.wipeAllData();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Semua data berhasil dihapus. Harap restart aplikasi.',
-                    ),
-                  ),
+          _buildProfileCard(context, profile, isDark),
+          const SizedBox(height: AppSpacing.xxl),
+
+          const SectionHeader(title: 'Pengaturan Cicilan'),
+          const SizedBox(height: AppSpacing.md),
+          JapandiCard(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: _buildSettingTile(
+              context: context,
+              icon: LucideIcons.calendarClock,
+              title: 'Kelola Cicilan',
+              subtitle: 'KPR, Kendaraan, Pinjaman',
+              iconBgColor: isDark ? AppColors.darkInfoBg : AppColors.infoBg,
+              iconColor: isDark ? AppColors.primaryLight : AppColors.primary,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CicilanListScreen()),
                 );
-              }
-            },
-            isDestructive: true,
+              },
+              isDark: isDark,
+            ),
           ),
+
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader(title: 'Keuangan'),
+          const SizedBox(height: AppSpacing.md),
+          JapandiCard(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Column(
+              children: [
+                _buildSettingTile(
+                  context: context,
+                  icon: LucideIcons.wallet,
+                  title: 'Sumber Pendapatan',
+                  iconBgColor: isDark
+                      ? AppColors.darkSuccessBg
+                      : AppColors.successBg,
+                  iconColor: isDark
+                      ? const Color(0xFF6EDC98)
+                      : AppColors.success,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const IncomeSourcesScreen(),
+                      ),
+                    );
+                  },
+                  isDark: isDark,
+                ),
+                Divider(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                  height: 1,
+                ),
+                _buildSettingTile(
+                  context: context,
+                  icon: LucideIcons.bell,
+                  title: 'Notifikasi & Peringatan',
+                  iconBgColor: isDark
+                      ? AppColors.darkWarningBg
+                      : AppColors.warningBg,
+                  iconColor: isDark
+                      ? const Color(0xFFFCD34D)
+                      : AppColors.warning,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationSettingsScreen(),
+                      ),
+                    );
+                  },
+                  isDark: isDark,
+                ),
+                Divider(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                  height: 1,
+                ),
+                _buildSettingTile(
+                  context: context,
+                  icon: LucideIcons.bot,
+                  title: 'Gemini AI Advisor',
+                  iconBgColor: isDark
+                      ? const Color(0xFFE0E7FF).withOpacity(0.1)
+                      : const Color(0xFFE0E7FF),
+                  iconColor: isDark
+                      ? const Color(0xFF818CF8)
+                      : const Color(0xFF4F46E5),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const GeminiSettingsScreen(),
+                      ),
+                    );
+                  },
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader(title: 'Sistem & Data'),
+          const SizedBox(height: AppSpacing.md),
+          JapandiCard(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Column(
+              children: [
+                _buildSettingTile(
+                  context: context,
+                  icon: LucideIcons.download,
+                  title: 'Ekspor Data JSON',
+                  iconBgColor: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.surface,
+                  iconColor: isDark
+                      ? AppColors.textInverseSecondary
+                      : AppColors.textSecondary,
+                  onTap: () async {
+                    try {
+                      final file = await BackupService.exportDataToJson();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Backup JSON tersimpan: ${file.path}',
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gagal backup: $e')),
+                        );
+                      }
+                    }
+                  },
+                  isDark: isDark,
+                ),
+                Divider(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                  height: 1,
+                ),
+                _buildSettingTile(
+                  context: context,
+                  icon: LucideIcons.trash2,
+                  title: 'Hapus Semua Data',
+                  isDestructive: true,
+                  iconBgColor: isDark
+                      ? AppColors.darkDangerBg
+                      : AppColors.dangerBg,
+                  iconColor: isDark
+                      ? const Color(0xFFFCA5A5)
+                      : AppColors.danger,
+                  onTap: () async {
+                    await BackupService.wipeAllData();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Semua data berhasil dihapus. Harap restart aplikasi.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsGroup(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListTile(
-    BuildContext context,
-    IconData icon,
-    String title,
-    VoidCallback onTap, {
-    bool isDestructive = false,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isDestructive ? AppColors.danger : AppColors.primary,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: isDestructive ? AppColors.danger : AppColors.textPrimary,
-          ),
-        ),
-        trailing: const Icon(
-          LucideIcons.chevronRight,
-          size: 16,
-          color: AppColors.textMuted,
-        ),
-        onTap: onTap,
-      ),
-    );
-  }
-
-  void _showDueDateDialog(BuildContext context, dynamic profile) {
-    if (profile == null) return;
-
-    int selectedDay = profile.cicilanDueDay;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Tanggal Jatuh Tempo'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Pilih tanggal jatuh tempo cicilan setiap bulannya:',
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButton<int>(
-                    value: selectedDay,
-                    isExpanded: true,
-                    items: List.generate(31, (index) => index + 1).map((day) {
-                      return DropdownMenuItem<int>(
-                        value: day,
-                        child: Text('Tanggal $day'),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedDay = value;
-                        });
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Batal',
-                    style: TextStyle(color: AppColors.textMuted),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () async {
-                    profile.cicilanDueDay = selectedDay;
-                    await profile.save();
-                    if (context.mounted) {
-                      // Navigate back and force a rebuild by replacing the route or popping
-                      // Since we are in StatelessWidget, popping dialog is enough, but main screen
-                      // needs rebuild. For simplicity, we pop dialog. The user might need to re-open settings.
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Tanggal jatuh tempo diperbarui'),
-                        ),
-                      );
-                    }
-                  },
-                  child: const Text('Simpan'),
-                ),
-              ],
-            );
-          },
+  Widget _buildProfileCard(BuildContext context, dynamic profile, bool isDark) {
+    return JapandiCard(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
         );
       },
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      backgroundColor: isDark ? AppColors.darkCard : AppColors.surfaceCard,
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkInfoBg : AppColors.infoBg,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                (profile?.name?.isNotEmpty ?? false)
+                    ? profile!.name![0].toUpperCase()
+                    : 'U',
+                style: AppTextStyles.heading2.copyWith(
+                  color: isDark ? AppColors.primaryLight : AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  profile?.name ?? 'Profil Anda',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Atur profil & preferensi',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(LucideIcons.chevronRight, color: AppColors.textMuted, size: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingTile({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required Color iconBgColor,
+    required Color iconColor,
+    required VoidCallback onTap,
+    required bool isDark,
+    bool isDestructive = false,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: 4,
+      ),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: iconBgColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+      title: Text(
+        title,
+        style: AppTextStyles.body.copyWith(
+          fontWeight: FontWeight.w500,
+          color: isDestructive
+              ? (isDark ? const Color(0xFFFCA5A5) : AppColors.danger)
+              : (isDark ? AppColors.textInverse : AppColors.textPrimary),
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            )
+          : null,
+      trailing: Icon(
+        LucideIcons.chevronRight,
+        size: 18,
+        color: AppColors.textMuted,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onTap: onTap,
     );
   }
 }

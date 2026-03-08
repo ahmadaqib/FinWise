@@ -6,22 +6,45 @@ class AppTextStyles {
   static TextStyle get _baseStyle => GoogleFonts.plusJakartaSans();
 
   // JetBrains Mono for Numbers
-  static TextStyle get mono => GoogleFonts.jetBrainsMono(
-    fontSize: 15,
+  static TextStyle get monoSmall => GoogleFonts.jetBrainsMono(
+    fontSize: 12,
     fontWeight: FontWeight.w500,
     height: 1.4,
+  );
+
+  static TextStyle get mono => GoogleFonts.jetBrainsMono(
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    height: 1.4,
+    letterSpacing: -0.5,
+  );
+
+  static TextStyle get monoLarge => GoogleFonts.jetBrainsMono(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
+    letterSpacing: -1.0,
+  );
+
+  static TextStyle get displayLarge => _baseStyle.copyWith(
+    fontSize: 40,
+    fontWeight: FontWeight.w700,
+    height: 1.1,
+    letterSpacing: -1.0,
   );
 
   static TextStyle get display => _baseStyle.copyWith(
     fontSize: 32,
     fontWeight: FontWeight.w700,
     height: 1.2,
+    letterSpacing: -0.5,
   );
 
   static TextStyle get heading1 => _baseStyle.copyWith(
     fontSize: 24,
     fontWeight: FontWeight.w600,
     height: 1.3,
+    letterSpacing: -0.5,
   );
 
   static TextStyle get heading2 => _baseStyle.copyWith(
@@ -52,5 +75,6 @@ class AppTextStyles {
     fontSize: 12,
     fontWeight: FontWeight.w600,
     height: 1.3,
+    letterSpacing: 0.2, // Tiny extra space for semantic caps
   );
 }

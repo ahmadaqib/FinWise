@@ -1,0 +1,104 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_animations.dart';
+
+class JapandiCard extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
+  final bool hasBorder;
+  final Color? backgroundColor;
+
+  const JapandiCard({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.padding = const EdgeInsets.all(16.0),
+    this.hasBorder = true,
+    this.backgroundColor,
+  });
+
+  @override
+  State<JapandiCard> createState() => _JapandiCardState();
+}
+
+class _JapandiCardState extends State<JapandiCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(
+        milliseconds: 100,
+      ), // Fast reaction per mobile-design
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.97,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    if (widget.onTap != null) _controller.forward();
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    if (widget.onTap != null) _controller.reverse();
+  }
+
+  void _onTapCancel() {
+    if (widget.onTap != null) _controller.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultBg = isDark ? AppColors.darkCard : AppColors.surfaceCard;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
+    Widget cardWidget = AnimatedContainer(
+      duration: AppAnimations.fast,
+      decoration: BoxDecoration(
+        color: widget.backgroundColor ?? defaultBg,
+        borderRadius: BorderRadius.circular(16),
+        border: widget.hasBorder
+            ? Border.all(
+                color: _isHovered && widget.onTap != null
+                    ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                    : borderColor,
+                width: 1,
+              )
+            : null,
+      ),
+      child: Padding(padding: widget.padding, child: widget.child),
+    );
+
+    if (widget.onTap != null) {
+      cardWidget = MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTapDown: _onTapDown,
+          onTapUp: _onTapUp,
+          onTapCancel: _onTapCancel,
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: ScaleTransition(scale: _scaleAnimation, child: cardWidget),
+        ),
+      );
+    }
+
+    return cardWidget;
+  }
+}
