@@ -34,13 +34,7 @@ This Code of Conduct applies both within project spaces and in public spaces whe
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team at **ahmadaqib@example.com** (atau melalui Private Message di GitHub). Semua keluhan akan ditinjau dan diselidiki serta akan menghasilkan respons yang dianggap perlu dan tepat sesuai dengan keadaan. Tim proyek berkewajiban untuk menjaga kerahasiaan pelapor insiden.
-
-### Tingkatan Penegakan (Enforcement Tiers)
-
-1. **Koreksi:** Peringatan tertulis secara pribadi untuk perilaku yang tidak pantas.
-2. **Peringatan:** Peringatan formal dengan batasan interaksi sementara dalam komunitas.
-3. **Pemblokiran:** Pemblokiran permanen dari repositori dan organisasi untuk pelanggaran berat atau berulang.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by contacting the project team. All complaints will be reviewed and investigated and will result in a response that is deemed necessary and appropriate to the circumstances. The project team is obligated to maintain confidentiality with regard to the reporter of an incident. Further details of specific enforcement policies may be posted separately.
 
 Project maintainers who do not follow or enforce the Code of Conduct in good faith may face temporary or permanent repercussions as determined by other members of the project's leadership.
 
