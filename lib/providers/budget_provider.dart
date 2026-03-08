@@ -1,3 +1,5 @@
+/// Core logic for calculating available budgets, tracking expenses,
+/// and evaluating financial health scores in real-time.
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
