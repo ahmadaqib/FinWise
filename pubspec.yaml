@@ -65,6 +65,8 @@ dependencies:
   image_picker: ^1.2.1
   path: ^1.9.1
   crypto: ^3.0.7
+  share_plus: ^10.1.4
+  file_picker: ^8.3.7
 
 dev_dependencies:
   flutter_test:

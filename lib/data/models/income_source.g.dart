@@ -26,13 +26,14 @@ class IncomeSourceAdapter extends TypeAdapter<IncomeSource> {
       createdAt: fields[6] as DateTime,
       deactivatedAt: fields[7] as DateTime?,
       changeLog: (fields[8] as List).cast<IncomeChangeLog>(),
+      quadrant: fields[9] == null ? 'E' : fields[9] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, IncomeSource obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class IncomeSourceAdapter extends TypeAdapter<IncomeSource> {
       ..writeByte(7)
       ..write(obj.deactivatedAt)
       ..writeByte(8)
-      ..write(obj.changeLog);
+      ..write(obj.changeLog)
+      ..writeByte(9)
+      ..write(obj.quadrant);
   }
 
   @override

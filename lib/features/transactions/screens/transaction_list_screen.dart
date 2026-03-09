@@ -9,7 +9,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_utils.dart';
-import '../../../shared/widgets/japandi_card.dart';
+import '../../../shared/widgets/flat_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../data/models/transaction.dart';
 import '../widgets/transaction_form.dart';
@@ -125,8 +125,8 @@ class TransactionListScreen extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: JapandiCard(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      child: FlatCard(
+        padding: const EdgeInsets.all(12),
         onTap: () {
           if (t.imageRef != null) {
             _showImage(context, t.imageRef!);

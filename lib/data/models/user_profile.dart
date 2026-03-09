@@ -25,6 +25,21 @@ class UserProfile extends HiveObject {
   @HiveField(6, defaultValue: 24)
   int cicilanDueDay; // Tanggal jatuh tempo cicilan (1-31)
 
+  @HiveField(7, defaultValue: 15000000)
+  double emergencyFundTarget;
+
+  @HiveField(8, defaultValue: 5000000)
+  double monthlyPassiveTarget;
+
+  @HiveField(9, defaultValue: 100000000)
+  double netWorthTarget;
+
+  @HiveField(10, defaultValue: 25)
+  int salaryDate; // Tanggal gajian (1-31)
+
+  @HiveField(11)
+  DateTime? lastArchivedDate;
+
   UserProfile({
     required this.name,
     this.fixedIncome1 = 4750000,
@@ -33,5 +48,10 @@ class UserProfile extends HiveObject {
     this.cicilanNormal = 2000000,
     this.isMonth1 = true,
     this.cicilanDueDay = 24,
+    this.emergencyFundTarget = 15000000,
+    this.monthlyPassiveTarget = 5000000,
+    this.netWorthTarget = 100000000,
+    this.salaryDate = 25,
+    this.lastArchivedDate,
   });
 }

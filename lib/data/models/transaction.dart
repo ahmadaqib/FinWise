@@ -28,6 +28,12 @@ class Transaction extends HiveObject {
   @HiveField(7)
   String? imageRef;
 
+  @HiveField(8)
+  String? spendingMood; // 'planned' | 'impulsive' | 'emotional' | 'necessity' | 'investment'
+
+  @HiveField(9)
+  String? transactionNature; // 'asset' | 'liability' | 'neutral' | 'investment'
+
   Transaction({
     required this.id,
     required this.amount,
@@ -37,6 +43,8 @@ class Transaction extends HiveObject {
     required this.date,
     this.isRecurring = false,
     this.imageRef,
+    this.spendingMood,
+    this.transactionNature,
   });
 
   Transaction copyWith({
@@ -48,6 +56,8 @@ class Transaction extends HiveObject {
     DateTime? date,
     bool? isRecurring,
     String? imageRef,
+    String? spendingMood,
+    String? transactionNature,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -58,6 +68,8 @@ class Transaction extends HiveObject {
       date: date ?? this.date,
       isRecurring: isRecurring ?? this.isRecurring,
       imageRef: imageRef ?? this.imageRef,
+      spendingMood: spendingMood ?? this.spendingMood,
+      transactionNature: transactionNature ?? this.transactionNature,
     );
   }
 }

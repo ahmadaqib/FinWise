@@ -1,12 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../../services/backup_service.dart';
-import '../../../shared/widgets/japandi_card.dart';
+import '../../../shared/widgets/flat_card.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../income_sources/screens/income_sources_screen.dart';
 import '../../cicilan/screens/cicilan_list_screen.dart';
@@ -35,7 +38,7 @@ class SettingsScreen extends StatelessWidget {
 
           const SectionHeader(title: 'Pengaturan Cicilan'),
           const SizedBox(height: AppSpacing.md),
-          JapandiCard(
+          FlatCard(
             padding: const EdgeInsets.all(AppSpacing.sm),
             child: _buildSettingTile(
               context: context,
@@ -57,7 +60,7 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           const SectionHeader(title: 'Keuangan'),
           const SizedBox(height: AppSpacing.md),
-          JapandiCard(
+          FlatCard(
             padding: const EdgeInsets.all(AppSpacing.sm),
             child: Column(
               children: [
@@ -136,14 +139,17 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           const SectionHeader(title: 'Sistem & Data'),
           const SizedBox(height: AppSpacing.md),
-          JapandiCard(
-            padding: const EdgeInsets.all(AppSpacing.sm),
+          FlatCard(
+            padding: EdgeInsets.zero,
+            backgroundColor: isDark
+                ? AppColors.darkSubtle
+                : AppColors.surfaceSubtle,
             child: Column(
               children: [
                 _buildSettingTile(
                   context: context,
-                  icon: LucideIcons.download,
-                  title: 'Ekspor Data JSON',
+                  icon: LucideIcons.share2,
+                  title: 'Ekspor Data (Backup)',
                   iconBgColor: isDark
                       ? AppColors.darkSurface
                       : AppColors.surface,
@@ -153,19 +159,92 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () async {
                     try {
                       final file = await BackupService.exportDataToJson();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Backup JSON tersimpan: ${file.path}',
-                            ),
-                          ),
-                        );
-                      }
+                      // Share the file
+                      await Share.shareXFiles([
+                        XFile(file.path),
+                      ], subject: 'FinWise Backup ${DateTime.now().toLocal()}');
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('Gagal backup: $e')),
+                        );
+                      }
+                    }
+                  },
+                  isDark: isDark,
+                ),
+                Divider(
+                  color: isDark ? AppColors.darkBorder : AppColors.border,
+                  height: 1,
+                ),
+                _buildSettingTile(
+                  context: context,
+                  icon: LucideIcons.upload,
+                  title: 'Impor Data (Restore)',
+                  iconBgColor: isDark
+                      ? AppColors.darkSurface
+                      : AppColors.surface,
+                  iconColor: isDark
+                      ? AppColors.textInverseSecondary
+                      : AppColors.textSecondary,
+                  onTap: () async {
+                    try {
+                      final result = await FilePicker.platform.pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['json'],
+                      );
+
+                      if (result != null && result.files.single.path != null) {
+                        final file = File(result.files.single.path!);
+                        final content = await file.readAsString();
+
+                        if (context.mounted) {
+                          // Show confirmation dialog before overwriting
+                          final confirmed =
+                              await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Konfirmasi Restore'),
+                                  content: const Text(
+                                    'Proses ini akan menghapus data saat ini dan menggantinya dengan data dari file backup. Lanjutkan?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Batal'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: AppColors.danger,
+                                      ),
+                                      child: const Text('Ya, Restore'),
+                                    ),
+                                  ],
+                                ),
+                              ) ??
+                              false;
+
+                          if (confirmed) {
+                            await BackupService.importDataFromJson(content);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Restore berhasil! Silakan restart aplikasi.',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Gagal restore: $e')),
                         );
                       }
                     }
@@ -188,15 +267,43 @@ class SettingsScreen extends StatelessWidget {
                       ? const Color(0xFFFCA5A5)
                       : AppColors.danger,
                   onTap: () async {
-                    await BackupService.wipeAllData();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Semua data berhasil dihapus. Harap restart aplikasi.',
+                    // Show confirmation dialog before wiping
+                    final confirmed =
+                        await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Hapus Semua Data?'),
+                            content: const Text(
+                              'Tindakan ini tidak dapat dibatalkan. Semua data transaksi dan profil akan hilang permanen.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Batal'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                ),
+                                child: const Text('Hapus Permanen'),
+                              ),
+                            ],
                           ),
-                        ),
-                      );
+                        ) ??
+                        false;
+
+                    if (confirmed) {
+                      await BackupService.wipeAllData();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Semua data berhasil dihapus. Harap restart aplikasi.',
+                            ),
+                          ),
+                        );
+                      }
                     }
                   },
                   isDark: isDark,
@@ -211,7 +318,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildProfileCard(BuildContext context, dynamic profile, bool isDark) {
-    return JapandiCard(
+    return FlatCard(
       onTap: () {
         Navigator.push(
           context,
@@ -219,14 +326,14 @@ class SettingsScreen extends StatelessWidget {
         );
       },
       padding: const EdgeInsets.all(AppSpacing.lg),
-      backgroundColor: isDark ? AppColors.darkCard : AppColors.surfaceCard,
+      backgroundColor: AppColors.surfaceCard,
       child: Row(
         children: [
           Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkInfoBg : AppColors.infoBg,
+              color: AppColors.infoBg,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -235,7 +342,7 @@ class SettingsScreen extends StatelessWidget {
                     ? profile!.name![0].toUpperCase()
                     : 'U',
                 style: AppTextStyles.heading2.copyWith(
-                  color: isDark ? AppColors.primaryLight : AppColors.primary,
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -262,7 +369,11 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
-          Icon(LucideIcons.chevronRight, color: AppColors.textMuted, size: 20),
+          const Icon(
+            LucideIcons.chevronRight,
+            color: AppColors.textMuted,
+            size: 20,
+          ),
         ],
       ),
     );
@@ -297,9 +408,7 @@ class SettingsScreen extends StatelessWidget {
         title,
         style: AppTextStyles.body.copyWith(
           fontWeight: FontWeight.w500,
-          color: isDestructive
-              ? (isDark ? const Color(0xFFFCA5A5) : AppColors.danger)
-              : (isDark ? AppColors.textInverse : AppColors.textPrimary),
+          color: isDestructive ? AppColors.danger : AppColors.textPrimary,
         ),
       ),
       subtitle: subtitle != null
@@ -310,12 +419,12 @@ class SettingsScreen extends StatelessWidget {
               ),
             )
           : null,
-      trailing: Icon(
+      trailing: const Icon(
         LucideIcons.chevronRight,
         size: 18,
         color: AppColors.textMuted,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       onTap: onTap,
     );
   }

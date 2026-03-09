@@ -5,16 +5,12 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../services/gemini_service.dart';
 import '../services/ai_tools.dart';
 import '../services/ai_action_executor.dart';
-import '../data/repositories/user_profile_repository.dart';
 import '../data/repositories/ai_cache_repository.dart';
 import '../core/utils/currency_formatter.dart';
 import '../features/ai_advisor/widgets/action_confirmation_card.dart';
 import 'budget_provider.dart';
-import 'income_provider.dart';
 import 'transaction_provider.dart';
 import 'rpd_counter_provider.dart';
-import 'cicilan_provider.dart';
-import '../data/repositories/cicilan_repository.dart';
 
 final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((
   ref,
@@ -75,130 +71,56 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   // ── PERSONA ──
   String _buildPersona() {
     return '''Anda adalah FinWise AI — penasihat keuangan pribadi dengan pola pikir Warren Buffett dan kejelian analis keuangan berpengalaman 80 tahun.
-Kepribadian: Tegas, to-the-point, berbasis data, selalu prioritaskan keamanan modal sebelum pertumbuhan.
+78: Kepribadian: Tegas, to-the-point, berbasis data, selalu prioritaskan keamanan modal sebelum pertumbuhan.
 
 KEMAMPUAN ANALISIS:
-1. Kamu memiliki akses pengetahuan mendalam tentang kondisi pasar global, harga emas, pergerakan saham, dan tren geopolitik.
-2. Selalu sertakan konteks ekonomi terkini (misal: inflasi, suku bunga, ketegangan geopolitik) saat memberikan saran investasi atau analisis aset.
-3. Fokus pada perlindungan nilai (hedging) dan diversifikasi yang cerdas.
+1. Kamu memiliki akses pengetahuan mendalam tentang kondisi pasar global dan algoritma FinWise 5-Layer.
+2. Selalu gunakan metrik FWS (FinWise Score) dan Spending Velocity dalam analisismu.
+3. Fokus pada perlindungan nilai (hedging) dan diversifikasi yang cerdas berdasarkan Cash Flow Quadrant user.
 
 ATURAN KETAT:
 1. DILARANG mengulang data keuangan user kecuali ditanya spesifik.
 2. DILARANG basa-basi. LANGSUNG ke inti jawaban.
 3. Jawaban MAKSIMAL 3 poin ringkas.
-4. Untuk saran investasi WAJIB sertakan:
-   a. Nominal Rupiah ideal (dari "Uang Tersisa" dikurangi dana darurat 20%).
-   b. 1-2 instrumen spesifik dengan alasan berdasarkan tren makroekonomi/geopolitik saat ini.
-   c. Persentase alokasi (misal: 60% reksadana, 40% SBN).
-5. Jika skor < 50 atau cicilan > 40% income: TOLAK saran investasi, suruh perbaiki fundamental.
-6. Gunakan bahasa kasual Indonesia.
-
-KEMAMPUAN AKSI DATA:
-Kamu punya kemampuan untuk mencatat dan mengubah data keuangan user melalui function tools.
-- Kamu bisa: menambah transaksi, menambah/mengubah sumber pendapatan, menambah/mengubah cicilan, mencatat pembayaran cicilan.
-- Kamu TIDAK bisa menghapus data apapun.
-- Jika informasi yang diberikan user KURANG untuk melakukan aksi, TANYA dulu sebelum memanggil function.
-- Setelah function dipanggil dan dikonfirmasi user, berikan respons singkat tentang dampaknya terhadap kondisi keuangan.''';
+4. Gunakan metrik "Adaptive Daily Limit" saat user bertanya tentang budget harian.
+5. Jika FWS < 400 (Fragile/Surviving): Fokus pada fundamental (Layer 1 FLOW).
+6. Gunakan bahasa kasual Indonesia.''';
   }
 
   // ── FINANCIAL SNAPSHOT ──
   String _buildFinancialSnapshot() {
-    final grossIncome = _ref.read(totalFixedIncomeProvider);
-    final cicilan = _ref.read(currentCicilanProvider);
-    final freeBudget = _ref.read(freeBudgetProvider);
-    final remainingBudget = _ref.read(remainingBudgetProvider);
-    final dailyLimit = _ref.read(dailySafeLimitProvider);
-    final totalExpense = _ref.read(totalExpenseThisMonthProvider);
-    final healthScore = _ref.read(healthScoreProvider);
-    final profile = UserProfileRepository().getProfile();
-
+    final context = _ref.read(aiContextPackageProvider);
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final daysRemaining = daysInMonth - now.day;
 
-    final dayNames = [
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-      'Minggu',
-    ];
-    final monthNames = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
+    String fmt(double val) => CurrencyFormatter.format(val);
+    String pct(double val) => "${val.toStringAsFixed(1)}%";
 
-    final incomes = _ref.read(incomeProvider);
-    final paydayInfo = incomes
-        .where(
-          (s) =>
-              s.isActive && (s.type == 'fixed_monthly' || s.type == 'passive'),
-        )
-        .map((s) => "${s.name}(tgl ${s.receivedOnDay})")
-        .join(', ');
+    return '''WAKTU: ${now.day}/${now.month}/${now.year} | Sisa $daysRemaining hari
 
-    final transactions = _ref.read(transactionProvider);
-    final monthlyIncome = transactions
-        .where(
-          (t) =>
-              t.type == 'income' &&
-              t.date.year == now.year &&
-              t.date.month == now.month,
-        )
-        .fold(0.0, (sum, t) => sum + t.amount);
+KONTEKS FINWISE (5-LAYER ENGINE):
+[LAYER 1: FLOW]
+Score Efisiensi: ${pct(context.flowScore)}
+Adaptive Daily Limit: ${fmt(context.adaptiveDailySafeLimit)}
+Sisa Budget Bebas: ${fmt(context.remainingBudget)}
+Zona: S/F/G/F: ${fmt(context.zoneDistribution['shield'] ?? 0)} / ${fmt(context.zoneDistribution['flow'] ?? 0)} / ${fmt(context.zoneDistribution['grow'] ?? 0)} / ${fmt(context.zoneDistribution['free'] ?? 0)}
 
-    final expenseMap = <String, double>{};
-    final incomeMap = <String, double>{};
-    for (final t in transactions.where(
-      (t) => t.date.year == now.year && t.date.month == now.month,
-    )) {
-      if (t.type == 'expense') {
-        expenseMap[t.category] = (expenseMap[t.category] ?? 0) + t.amount;
-      } else {
-        final cat = t.category.isEmpty ? 'Lainnya' : t.category;
-        incomeMap[cat] = (incomeMap[cat] ?? 0) + t.amount;
-      }
-    }
+[LAYER 2: QUADRANT]
+Freedom Index: ${context.freedomIndex.toStringAsFixed(2)}/100
+Distribusi: E:${fmt(context.incomeByQuadrant['E'] ?? 0)}, S:${fmt(context.incomeByQuadrant['S'] ?? 0)}, B:${fmt(context.incomeByQuadrant['B'] ?? 0)}, I:${fmt(context.incomeByQuadrant['I'] ?? 0)}
 
-    final expSummary = expenseMap.entries
-        .map((e) => "${e.key}: ${CurrencyFormatter.format(e.value)}")
-        .join(', ');
-    final incSummary = incomeMap.entries
-        .map((e) => "${e.key}: ${CurrencyFormatter.format(e.value)}")
-        .join(', ');
+[LAYER 3: BEHAVIOR]
+Spending Velocity: ${context.spendingVelocity.toStringAsFixed(2)}x (ideal 1.0)
+Impulse Rate: ${pct(context.impulseRateOverall * 100)}
+Asset/Liability Ratio: ${context.assetToLiabilityRatio.toStringAsFixed(2)}
 
-    // Cicilan details
-    final activeCicilans = _ref.read(cicilanListProvider);
-    final cicilanDetails = activeCicilans
-        .map((c) {
-          final paid = CicilanRepository().getPaidCount(c.id);
-          return '${c.name}: ${CurrencyFormatter.format(c.monthlyAmount)}/bln (${paid}/${c.totalTenor}x, jatuh tempo tgl ${c.dueDay})';
-        })
-        .join('\n');
+[LAYER 4: FWS SCORE]
+FWS: ${context.currentFWS.toInt()}/1000 (${context.fwsBand})
 
-    return '''WAKTU: ${dayNames[now.weekday - 1]}, ${now.day} ${monthNames[now.month - 1]} ${now.year} | ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB | Sisa $daysRemaining hari
-
-KEUANGAN:
-Pemasukan tetap: ${CurrencyFormatter.format(grossIncome)} | Gajian: ${paydayInfo.isEmpty ? 'N/A' : paydayInfo}
-Pemasukan tercatat bulan ini: ${CurrencyFormatter.format(monthlyIncome)} [${incSummary.isEmpty ? '-' : incSummary}]
-Cicilan total: ${CurrencyFormatter.format(cicilan)} (jatuh tempo tgl ${profile?.cicilanDueDay ?? 'N/A'})
-${cicilanDetails.isNotEmpty ? 'Detail cicilan:\n$cicilanDetails' : 'Belum ada cicilan aktif.'}
-Budget bebas: ${CurrencyFormatter.format(freeBudget)}
-Pengeluaran bulan ini: ${CurrencyFormatter.format(totalExpense)} [${expSummary.isEmpty ? '-' : expSummary}]
-Tersisa: ${CurrencyFormatter.format(remainingBudget)} | Limit harian: ${CurrencyFormatter.format(dailyLimit)}
-Skor kesehatan: $healthScore/100''';
+[LAYER 5: ANCHOR]
+Emergency Fund: ${pct(context.emergencyFundProgress)}
+Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
   }
 
   // ── TRANSACTION LOG ──

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../shared/widgets/japandi_card.dart';
+import '../../../../shared/widgets/flat_card.dart';
 import '../../../../shared/widgets/status_chip.dart';
 
 class InsightCard extends StatelessWidget {
@@ -13,11 +13,10 @@ class InsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return JapandiCard(
+    return FlatCard(
       backgroundColor: isDark
           ? AppColors.darkWarningBg
           : const Color(0xFFFCF9EC), // Very soft warm tint
-      hasBorder: false,
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

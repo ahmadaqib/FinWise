@@ -23,13 +23,14 @@ class CategoryAdapter extends TypeAdapter<Category> {
       color: fields[3] as String,
       budgetLimit: fields[4] as double?,
       isDefault: fields[5] as bool,
+      zone: fields[6] == null ? 'flow' : fields[6] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Category obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class CategoryAdapter extends TypeAdapter<Category> {
       ..writeByte(4)
       ..write(obj.budgetLimit)
       ..writeByte(5)
-      ..write(obj.isDefault);
+      ..write(obj.isDefault)
+      ..writeByte(6)
+      ..write(obj.zone);
   }
 
   @override

@@ -37,6 +37,7 @@ class NotificationService {
           channelDescription: 'Peringatan batas keamanan finansial',
           importance: Importance.max,
           priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
           ticker: 'ticker',
         );
     const NotificationDetails platformChannelSpecifics = NotificationDetails(

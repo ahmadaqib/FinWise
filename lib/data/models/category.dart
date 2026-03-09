@@ -22,6 +22,9 @@ class Category extends HiveObject {
   @HiveField(5)
   bool isDefault;
 
+  @HiveField(6, defaultValue: 'flow')
+  String zone; // 'shield' | 'flow' | 'grow' | 'free'
+
   Category({
     required this.id,
     required this.name,
@@ -29,5 +32,6 @@ class Category extends HiveObject {
     required this.color,
     this.budgetLimit,
     this.isDefault = false,
+    this.zone = 'flow',
   });
 }

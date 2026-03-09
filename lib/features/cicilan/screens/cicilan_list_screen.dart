@@ -8,7 +8,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/japandi_card.dart';
+import '../../../shared/widgets/flat_card.dart';
 import '../widgets/cicilan_form.dart';
 import 'cicilan_detail_screen.dart';
 
@@ -44,7 +44,7 @@ class CicilanListScreen extends ConsumerWidget {
                     ? paidCount / cicilan.totalTenor
                     : 0.0;
 
-                return JapandiCard(
+                return FlatCard(
                   onTap: () {
                     Navigator.push(
                       context,

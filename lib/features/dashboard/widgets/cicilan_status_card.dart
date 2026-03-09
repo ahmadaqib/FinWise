@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../shared/widgets/japandi_card.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../shared/widgets/flat_card.dart';
 import '../../../../shared/widgets/status_chip.dart';
 import '../../../../data/models/cicilan.dart';
 
@@ -54,7 +55,7 @@ class CicilanStatusCard extends StatelessWidget {
           : (daysLeft > 0 ? 'H-$daysLeft' : 'Lewat');
     }
 
-    return JapandiCard(
+    return FlatCard(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -69,19 +70,17 @@ class CicilanStatusCard extends StatelessWidget {
                     color: Theme.of(context).brightness == Brightness.dark
                         ? AppColors.darkDangerBg
                         : AppColors.dangerBg,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Center(
+                  child: const Center(
                     child: Icon(
-                      Icons.account_balance_wallet_outlined,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFFFCA5A5)
-                          : AppColors.danger,
+                      LucideIcons.creditCard,
+                      color: AppColors.danger,
                       size: 20,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,15 +107,9 @@ class CicilanStatusCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? AppColors.primaryMuted.withValues(
-                                      alpha: 0.2,
-                                    )
-                                  : AppColors.primaryLight.withValues(
-                                      alpha: 0.2,
-                                    ),
+                              color: AppColors.primaryLight.withValues(
+                                alpha: 0.2,
+                              ),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(

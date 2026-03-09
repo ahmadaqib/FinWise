@@ -22,6 +22,27 @@ class MonthlySummary extends HiveObject {
   @HiveField(5)
   double saldo;
 
+  @HiveField(6)
+  double? fwsScore;
+
+  @HiveField(7)
+  double? zoneShieldSpent;
+
+  @HiveField(8)
+  double? zoneFlowSpent;
+
+  @HiveField(9)
+  double? zoneGrowSpent;
+
+  @HiveField(10)
+  double? zoneFreeSpent;
+
+  @HiveField(11)
+  DateTime? startDate;
+
+  @HiveField(12)
+  DateTime? endDate;
+
   MonthlySummary({
     required this.month,
     required this.year,
@@ -29,5 +50,12 @@ class MonthlySummary extends HiveObject {
     required this.totalExpense,
     this.cicilanPaid = false,
     required this.saldo,
+    this.fwsScore,
+    this.zoneShieldSpent,
+    this.zoneFlowSpent,
+    this.zoneGrowSpent,
+    this.zoneFreeSpent,
+    this.startDate,
+    this.endDate,
   });
 }

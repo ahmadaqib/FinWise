@@ -23,13 +23,20 @@ class MonthlySummaryAdapter extends TypeAdapter<MonthlySummary> {
       totalExpense: fields[3] as double,
       cicilanPaid: fields[4] as bool,
       saldo: fields[5] as double,
+      fwsScore: fields[6] as double?,
+      zoneShieldSpent: fields[7] as double?,
+      zoneFlowSpent: fields[8] as double?,
+      zoneGrowSpent: fields[9] as double?,
+      zoneFreeSpent: fields[10] as double?,
+      startDate: fields[11] as DateTime?,
+      endDate: fields[12] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MonthlySummary obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.month)
       ..writeByte(1)
@@ -41,7 +48,21 @@ class MonthlySummaryAdapter extends TypeAdapter<MonthlySummary> {
       ..writeByte(4)
       ..write(obj.cicilanPaid)
       ..writeByte(5)
-      ..write(obj.saldo);
+      ..write(obj.saldo)
+      ..writeByte(6)
+      ..write(obj.fwsScore)
+      ..writeByte(7)
+      ..write(obj.zoneShieldSpent)
+      ..writeByte(8)
+      ..write(obj.zoneFlowSpent)
+      ..writeByte(9)
+      ..write(obj.zoneGrowSpent)
+      ..writeByte(10)
+      ..write(obj.zoneFreeSpent)
+      ..writeByte(11)
+      ..write(obj.startDate)
+      ..writeByte(12)
+      ..write(obj.endDate);
   }
 
   @override

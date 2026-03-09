@@ -4,7 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/repositories/user_profile_repository.dart';
-import '../../../shared/widgets/japandi_card.dart';
+import '../../../shared/widgets/flat_card.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -16,17 +16,22 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
+  late final TextEditingController _salaryDateCtrl;
 
   @override
   void initState() {
     super.initState();
     final profile = UserProfileRepository().getProfile();
     _nameCtrl = TextEditingController(text: profile?.name ?? '');
+    _salaryDateCtrl = TextEditingController(
+      text: (profile?.salaryDate ?? 25).toString(),
+    );
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _salaryDateCtrl.dispose();
     super.dispose();
   }
 
@@ -38,6 +43,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (profile != null) {
       profile.name = _nameCtrl.text.trim();
+      profile.salaryDate = int.tryParse(_salaryDateCtrl.text) ?? 25;
 
       await repo.saveProfile(profile);
 
@@ -67,8 +73,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              JapandiCard(
+              FlatCard(
                 padding: const EdgeInsets.all(AppSpacing.lg),
+                backgroundColor: AppColors.surfaceCard,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

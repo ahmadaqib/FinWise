@@ -53,13 +53,9 @@ class _HealthGaugeState extends State<HealthGauge>
   }
 
   Color _getScoreColor(int score, bool isDark) {
-    if (score >= 75) {
-      return isDark ? const Color(0xFF6EDC98) : AppColors.success;
-    }
-    if (score >= 50) {
-      return isDark ? const Color(0xFFE5B567) : AppColors.warning;
-    }
-    return isDark ? const Color(0xFFFCA5A5) : AppColors.danger;
+    if (score >= 75) return AppColors.success;
+    if (score >= 50) return AppColors.warning;
+    return AppColors.danger;
   }
 
   @override

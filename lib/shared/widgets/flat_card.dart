@@ -2,29 +2,28 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_animations.dart';
 
-class JapandiCard extends StatefulWidget {
+class FlatCard extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final EdgeInsetsGeometry padding;
-  final bool hasBorder;
+  // final bool hasBorder;
   final Color? backgroundColor;
 
-  const JapandiCard({
+  const FlatCard({
     super.key,
     required this.child,
     this.onTap,
     this.onLongPress,
     this.padding = const EdgeInsets.all(16.0),
-    this.hasBorder = true,
     this.backgroundColor,
   });
 
   @override
-  State<JapandiCard> createState() => _JapandiCardState();
+  State<FlatCard> createState() => _FlatCardState();
 }
 
-class _JapandiCardState extends State<JapandiCard>
+class _FlatCardState extends State<FlatCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
@@ -35,9 +34,7 @@ class _JapandiCardState extends State<JapandiCard>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(
-        milliseconds: 100,
-      ), // Fast reaction per mobile-design
+      duration: const Duration(milliseconds: 100),
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
@@ -65,23 +62,17 @@ class _JapandiCardState extends State<JapandiCard>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultBg = isDark ? AppColors.darkCard : AppColors.surfaceCard;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final defaultBg = AppColors.surfaceCard;
+    final bgColor = widget.backgroundColor ?? defaultBg;
 
     Widget cardWidget = AnimatedContainer(
       duration: AppAnimations.fast,
       decoration: BoxDecoration(
-        color: widget.backgroundColor ?? defaultBg,
-        borderRadius: BorderRadius.circular(16),
-        border: widget.hasBorder
-            ? Border.all(
-                color: _isHovered && widget.onTap != null
-                    ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                    : borderColor,
-                width: 1,
-              )
-            : null,
+        color: _isHovered
+            ? Color.alphaBlend(Colors.black.withValues(alpha: 0.02), bgColor)
+            : bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: null, // No borders in Flat Design
       ),
       child: Padding(padding: widget.padding, child: widget.child),
     );

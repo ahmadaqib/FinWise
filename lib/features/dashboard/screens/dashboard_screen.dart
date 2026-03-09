@@ -11,6 +11,7 @@ import '../../transactions/widgets/transaction_form.dart';
 
 // Dashboard Widgets
 import '../widgets/greeting_header.dart';
+import '../../../services/archive_service.dart';
 import '../widgets/health_score_section.dart';
 import '../widgets/key_metrics_row.dart';
 import '../widgets/budget_meter_card.dart';
@@ -22,6 +23,7 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    _checkArchive(ref);
     final healthScore = ref.watch(healthScoreProvider);
     final freeBudget = ref.watch(freeBudgetProvider);
     final incomeTransactions = ref.watch(totalIncomeThisMonthProvider);
@@ -126,5 +128,9 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _checkArchive(WidgetRef ref) {
+    Future.microtask(() => ref.read(archiveServiceProvider).checkAndArchive());
   }
 }

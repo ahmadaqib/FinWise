@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary (Navy)
-  static const Color primary = Color(0xFF1E3A5F); // Navy Deep
-  static const Color primaryLight = Color(0xFF2D5186); // Navy Soft
-  static const Color primaryMuted = Color(0xFFEEF2F8); // Navy Mist
+  // Primary (Flat Blue)
+  static const Color primary = Color(0xFF3B82F6); // Blue 500
+  static const Color primaryLight = Color(0xFF60A5FA); // Blue 400
+  static const Color primaryMuted = Color(0xFFEFF6FF); // Blue 50
 
   // Surface
-  static const Color surface = Color(0xFFFAFAF8); // Warm White (Light Mode)
+  static const Color surface = Color(0xFFFFFFFF); // Pure White
   static const Color surfaceCard = Color(0xFFFFFFFF); // Paper White
-  static const Color surfaceSubtle = Color(0xFFF4F3F0); // Linen
+  static const Color surfaceSubtle = Color(0xFFF3F4F6); // Gray 100
 
   // Dark Surface
   static const Color darkSurface = Color(0xFF161618); // Rich Earthy Dark
   static const Color darkCard = Color(0xFF222225); // Card background
   static const Color darkSubtle = Color(0xFF2C2C2F); // Linen variant
 
-  // Semantic
-  static const Color success = Color(0xFF3D7A5E); // Earthy Green
-  static const Color successBg = Color(0xFFEDF7F2);
-  static const Color warning = Color(0xFFB07D2E); // Warm Yellow/Orange
-  static const Color warningBg = Color(0xFFFDF6E7);
-  static const Color danger = Color(0xFFA33030); // Subdued Red
-  static const Color dangerBg = Color(0xFFFDEEED);
-  static const Color info = Color(0xFF2D5186); // Navy Soft
-  static const Color infoBg = Color(0xFFEEF2F8);
+  // Semantic (Flat)
+  static const Color success = Color(0xFF10B981); // Emerald 500
+  static const Color successBg = Color(0xFFECFDF5);
+  static const Color warning = Color(0xFFF59E0B); // Amber 500
+  static const Color warningBg = Color(0xFFFFFBEB);
+  static const Color danger = Color(0xFFEF4444); // Red 500
+  static const Color dangerBg = Color(0xFFFEF2F2);
+  static const Color info = Color(0xFF3B82F6); // Blue 500
+  static const Color infoBg = Color(0xFFEFF6FF);
 
   // Dark Semantic Backgrounds (Muted variants)
   static const Color darkSuccessBg = Color(0xFF243B30);
@@ -33,13 +33,13 @@ class AppColors {
   static const Color darkInfoBg = Color(0xFF192A44);
 
   // Text & Borders
-  static const Color textPrimary = Color(0xFF1A1A1A); // Almost Black
-  static const Color textSecondary = Color(0xFF5C5C5C); // Charcoal
-  static const Color textMuted = Color(0xFF9A9A9A); // Soft Gray
-  static const Color textInverse = Color(0xFFFAFAF8); // Warm White
-  static const Color textInverseSecondary = Color(0xFFA1A1A5);
+  static const Color textPrimary = Color(0xFF111827); // Gray 900
+  static const Color textSecondary = Color(0xFF4B5563); // Gray 600
+  static const Color textMuted = Color(0xFF9CA3AF); // Gray 400
+  static const Color textInverse = Color(0xFFFFFFFF);
+  static const Color textInverseSecondary = Color(0xFFD1D5DB);
 
-  static const Color border = Color(0xFFEDEDE9); // Warm Border
+  static const Color border = Color(0xFFE5E7EB); // Gray 200
   static const Color darkBorder = Color(0xFF353539); // Dark Border
 
   // Shimmer

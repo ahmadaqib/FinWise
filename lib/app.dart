@@ -19,6 +19,7 @@ class FinWiseApp extends ConsumerWidget {
     return MaterialApp(
       title: 'FinWise Personal',
       theme: AppTheme.lightTheme,
+      themeMode: ThemeMode.light,
       home: hasProfile ? const BottomNavShell() : const OnboardingScreen(),
       debugShowCheckedModeBanner: false,
     );

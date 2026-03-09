@@ -13,9 +13,19 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../services/pdf_export_service.dart';
-import '../../../shared/widgets/japandi_card.dart';
+import '../../../shared/widgets/flat_card.dart';
 import '../../../shared/widgets/section_header.dart';
 import '../../../shared/widgets/empty_state.dart';
+
+import '../../../data/models/monthly_summary.dart';
+import '../../../services/archive_service.dart';
+
+final allSummariesProvider = Provider<List<MonthlySummary>>((ref) {
+  final summaries = ref
+      .watch(monthlySummaryRepositoryProvider)
+      .getAllSummaries();
+  return summaries;
+});
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -26,47 +36,93 @@ class ReportsScreen extends ConsumerWidget {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final now = DateTime.now();
+    final cycle = ref.watch(currentCycleProvider);
+    final start = cycle['start']!;
+    final end = cycle['end']!;
+
+    // Check if the selected month is the current cycle
+    final isCurrentCycle =
+        (selectedMonth.year == now.year && selectedMonth.month == now.month) ||
+        (selectedMonth.year == start.year &&
+            selectedMonth.month == start.month);
+
     final baseIncome = ref.watch(totalFixedIncomeProvider);
     final baseCicilan = ref.watch(totalCicilanThisMonthProvider);
 
-    final monthlyTransactions = transactions
-        .where(
-          (t) =>
-              t.date.year == selectedMonth.year &&
-              t.date.month == selectedMonth.month,
-        )
-        .toList();
+    final List<dynamic> monthlyTransactions;
+    double totalIncome = 0;
+    double totalExpense = 0;
+    double netBalance = 0;
+    double fwsScore = 0;
+    Map<String, double> expenseCats = {};
+    Map<String, double> incomeCats = {};
 
-    final expenses = monthlyTransactions
-        .where((t) => t.type == 'expense')
-        .toList();
-    final incomes = monthlyTransactions
-        .where((t) => t.type == 'income')
-        .toList();
+    if (isCurrentCycle) {
+      monthlyTransactions = transactions
+          .where(
+            (t) =>
+                t.date.isAfter(start.subtract(const Duration(seconds: 1))) &&
+                t.date.isBefore(end.add(const Duration(seconds: 1))),
+          )
+          .toList();
 
-    final totalExpense =
-        expenses.fold(0.0, (sum, t) => sum + t.amount) + baseCicilan;
-    final totalIncome =
-        incomes.fold(0.0, (sum, t) => sum + t.amount) + baseIncome;
-    final netBalance = totalIncome - totalExpense;
+      final expenses = monthlyTransactions
+          .where((t) => t.type == 'expense')
+          .toList();
+      final txIncomes = monthlyTransactions
+          .where((t) => t.type == 'income')
+          .toList();
 
-    // Group expenses by category
-    final Map<String, double> expenseCats = {};
-    for (var t in expenses) {
-      expenseCats[t.category] = (expenseCats[t.category] ?? 0) + t.amount;
-    }
-    if (baseCicilan > 0) {
-      expenseCats['Cicilan Bulanan'] = baseCicilan;
-    }
+      totalExpense =
+          expenses.fold(0.0, (sum, t) => sum + t.amount) + baseCicilan;
+      totalIncome =
+          txIncomes.fold(0.0, (sum, t) => sum + t.amount) + baseIncome;
+      netBalance = totalIncome - totalExpense;
+      fwsScore = ref.watch(healthScoreProvider).toDouble();
 
-    // Group incomes by category
-    final Map<String, double> incomeCats = {};
-    for (var t in incomes) {
-      final cat = t.category.isEmpty ? 'Pemasukan' : t.category;
-      incomeCats[cat] = (incomeCats[cat] ?? 0) + t.amount;
-    }
-    if (baseIncome > 0) {
-      incomeCats['Pemasukan Tetap'] = baseIncome;
+      for (var t in expenses) {
+        expenseCats[t.category] = (expenseCats[t.category] ?? 0) + t.amount;
+      }
+      if (baseCicilan > 0) expenseCats['Cicilan Bulanan'] = baseCicilan;
+
+      for (var t in txIncomes) {
+        final cat = t.category.isEmpty ? 'Pemasukan' : t.category;
+        incomeCats[cat] = (incomeCats[cat] ?? 0) + t.amount;
+      }
+      if (baseIncome > 0) incomeCats['Pemasukan Tetap'] = baseIncome;
+    } else {
+      // Find historical summary
+      final summaries = ref.watch(allSummariesProvider);
+      final archive = summaries.firstWhere(
+        (s) => s.year == selectedMonth.year && s.month == selectedMonth.month,
+        orElse: () => MonthlySummary(
+          month: selectedMonth.month,
+          year: selectedMonth.year,
+          totalIncome: 0,
+          totalExpense: 0,
+          saldo: 0,
+        ),
+      );
+
+      totalIncome = archive.totalIncome;
+      totalExpense = archive.totalExpense;
+      netBalance = archive.saldo;
+      fwsScore = archive.fwsScore ?? 0;
+
+      expenseCats = {
+        if ((archive.zoneShieldSpent ?? 0) > 0)
+          'Shield (Needs)': archive.zoneShieldSpent!,
+        if ((archive.zoneFlowSpent ?? 0) > 0)
+          'Flow (Wants)': archive.zoneFlowSpent!,
+        if ((archive.zoneGrowSpent ?? 0) > 0)
+          'Grow (Savings)': archive.zoneGrowSpent!,
+        if ((archive.zoneFreeSpent ?? 0) > 0)
+          'Free (Impulse)': archive.zoneFreeSpent!,
+      };
+
+      incomeCats = {'Pemasukan': archive.totalIncome};
+      monthlyTransactions = []; // We don't show individual TX for archives yet
     }
 
     return Scaffold(
@@ -74,7 +130,9 @@ class ReportsScreen extends ConsumerWidget {
         title: const Text('Laporan'),
         automaticallyImplyLeading: false,
       ),
-      body: monthlyTransactions.isEmpty
+      body:
+          (isCurrentCycle && monthlyTransactions.isEmpty) ||
+              (!isCurrentCycle && totalIncome == 0 && totalExpense == 0)
           ? Column(
               children: [
                 Padding(
@@ -90,8 +148,9 @@ class ReportsScreen extends ConsumerWidget {
                   child: EmptyState(
                     icon: LucideIcons.pieChart,
                     title: 'Belum ada data laporan',
-                    description:
-                        'Catat transaksi pertamamu bulan ini untuk melihat analisanya di sini.',
+                    description: isCurrentCycle
+                        ? 'Catat transaksi pertamamu bulan ini untuk melihat analisanya di sini.'
+                        : 'Tidak ada data arsip untuk periode ini.',
                     actionLabel: 'Kembali ke Beranda',
                     onAction: () =>
                         ref.read(navIndexProvider.notifier).state = 0,
@@ -111,7 +170,7 @@ class ReportsScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xl),
 
                   // Net balance hero
-                  _buildNetBalanceHero(context, netBalance, isDark),
+                  _buildNetBalanceHero(context, netBalance, fwsScore, isDark),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Income vs Expense comparison
@@ -245,13 +304,18 @@ class ReportsScreen extends ConsumerWidget {
     final now = DateTime.now();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Generate a set of unique year-month combinations from transactions
+    // Generate a set of unique year-month combinations from transactions AND summaries
     final availableMonths = <DateTime>{
       DateTime(now.year, now.month), // Always include current month
     };
 
     for (var t in transactions) {
       availableMonths.add(DateTime(t.date.year, t.date.month));
+    }
+
+    final summaries = ref.watch(allSummariesProvider);
+    for (var s in summaries) {
+      availableMonths.add(DateTime(s.year, s.month));
     }
 
     // Convert to list and sort descending (newest first)
@@ -321,29 +385,49 @@ class ReportsScreen extends ConsumerWidget {
   Widget _buildNetBalanceHero(
     BuildContext context,
     double netBalance,
+    double fwsScore,
     bool isDark,
   ) {
-    return JapandiCard(
+    return FlatCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
       backgroundColor: isDark ? AppColors.darkInfoBg : AppColors.infoBg,
-      hasBorder: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                LucideIcons.wallet,
-                size: 20,
-                color: isDark ? AppColors.primaryLight : AppColors.primary,
+              Row(
+                children: [
+                  Icon(
+                    LucideIcons.wallet,
+                    size: 20,
+                    color: isDark ? AppColors.primaryLight : AppColors.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Saldo Bersih Periode Ini',
+                    style: AppTextStyles.label.copyWith(
+                      color: isDark
+                          ? AppColors.textInverseSecondary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Saldo Bersih Bulan Ini',
-                style: AppTextStyles.label.copyWith(
-                  color: isDark
-                      ? AppColors.textInverseSecondary
-                      : AppColors.textSecondary,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isDark ? AppColors.primary : AppColors.primaryMuted)
+                      .withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Score: ${fwsScore.toStringAsFixed(0)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: isDark ? AppColors.primaryLight : AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -379,7 +463,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return JapandiCard(
+    return FlatCard(
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,7 +518,7 @@ class _ChartCard extends StatelessWidget {
       isDark ? const Color(0xFF9E927A) : const Color(0xFFBDB29C), // Muted Ochre
     ];
 
-    return JapandiCard(
+    return FlatCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -25,13 +25,15 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       date: fields[5] as DateTime,
       isRecurring: fields[6] as bool,
       imageRef: fields[7] as String?,
+      spendingMood: fields[8] as String?,
+      transactionNature: fields[9] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Transaction obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +49,11 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       ..writeByte(6)
       ..write(obj.isRecurring)
       ..writeByte(7)
-      ..write(obj.imageRef);
+      ..write(obj.imageRef)
+      ..writeByte(8)
+      ..write(obj.spendingMood)
+      ..writeByte(9)
+      ..write(obj.transactionNature);
   }
 
   @override

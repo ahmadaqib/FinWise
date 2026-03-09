@@ -32,6 +32,9 @@ class IncomeSource extends HiveObject {
   @HiveField(8)
   List<IncomeChangeLog> changeLog;
 
+  @HiveField(9, defaultValue: 'E')
+  String quadrant; // 'E' | 'S' | 'B' | 'I'
+
   IncomeSource({
     required this.id,
     required this.name,
@@ -42,5 +45,6 @@ class IncomeSource extends HiveObject {
     required this.createdAt,
     this.deactivatedAt,
     this.changeLog = const [],
+    this.quadrant = 'E',
   });
 }

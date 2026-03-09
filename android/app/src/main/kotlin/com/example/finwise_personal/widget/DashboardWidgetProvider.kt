@@ -21,7 +21,7 @@ class DashboardWidgetProvider : HomeWidgetProvider() {
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.widget_layout).apply {
                 setTextViewText(R.id.tv_remaining_budget, remainingBudget)
-                setTextViewText(R.id.tv_daily_limit, "Batas Harian: $dailyLimit")
+                setTextViewText(R.id.tv_daily_limit, dailyLimit)
             }
             appWidgetManager.updateAppWidget(widgetId, views)
         }

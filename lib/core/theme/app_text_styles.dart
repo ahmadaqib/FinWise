@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTextStyles {
-  // Plus Jakarta Sans for UI
-  static TextStyle get _baseStyle => GoogleFonts.plusJakartaSans();
+  // Outfit for UI
+  static TextStyle get _baseStyle => GoogleFonts.outfit();
 
-  // JetBrains Mono for Numbers
+  // JetBrains Mono for Numbers (Kept for digital-native look)
   static TextStyle get monoSmall => GoogleFonts.jetBrainsMono(
     fontSize: 12,
     fontWeight: FontWeight.w500,
@@ -28,29 +28,30 @@ class AppTextStyles {
 
   static TextStyle get displayLarge => _baseStyle.copyWith(
     fontSize: 40,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800, // Extra Bold
     height: 1.1,
-    letterSpacing: -1.0,
+    letterSpacing: -0.02 * 40, // -0.02em
   );
 
   static TextStyle get display => _baseStyle.copyWith(
     fontSize: 32,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w800, // Extra Bold
     height: 1.2,
-    letterSpacing: -0.5,
+    letterSpacing: -0.02 * 32,
   );
 
   static TextStyle get heading1 => _baseStyle.copyWith(
     fontSize: 24,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700, // Bold
     height: 1.3,
-    letterSpacing: -0.5,
+    letterSpacing: -0.02 * 24,
   );
 
   static TextStyle get heading2 => _baseStyle.copyWith(
     fontSize: 20,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.w700, // Bold
     height: 1.3,
+    letterSpacing: -0.02 * 20,
   );
 
   static TextStyle get bodyLarge => _baseStyle.copyWith(
@@ -72,9 +73,9 @@ class AppTextStyles {
   );
 
   static TextStyle get label => _baseStyle.copyWith(
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: FontWeight.w600,
     height: 1.3,
-    letterSpacing: 0.2, // Tiny extra space for semantic caps
+    letterSpacing: 0.5, // Wider tracking for small caps
   );
 }

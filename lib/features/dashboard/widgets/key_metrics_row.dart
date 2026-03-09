@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../shared/widgets/japandi_card.dart';
+import '../../../../shared/widgets/flat_card.dart';
 import '../../../../shared/widgets/animated_counter.dart';
 
 class KeyMetricsRow extends StatelessWidget {
@@ -20,7 +20,7 @@ class KeyMetricsRow extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: JapandiCard(
+          child: FlatCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +45,7 @@ class KeyMetricsRow extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: JapandiCard(
+          child: FlatCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

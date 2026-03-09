@@ -3,7 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../shared/widgets/japandi_card.dart';
+import '../../../../shared/widgets/flat_card.dart';
 
 class BudgetMeterCard extends StatelessWidget {
   final double expense;
@@ -27,7 +27,7 @@ class BudgetMeterCard extends StatelessWidget {
         ? AppColors.primaryLight
         : AppColors.primary;
 
-    return JapandiCard(
+    return FlatCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 class SectionHeader extends StatelessWidget {
@@ -9,12 +10,16 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title, style: AppTextStyles.heading2),
-        if (action != null) action!,
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: AppTextStyles.label.copyWith(
+          color: AppColors.textSecondary,
+          letterSpacing: 1.2,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_text_styles.dart';
 import '../../features/ai_advisor/screens/ai_advisor_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/reports/screens/reports_screen.dart';
@@ -24,83 +25,62 @@ class BottomNavShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = ref.watch(navIndexProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: _screens[currentIndex],
       bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
-          backgroundColor: isDark ? AppColors.darkSurface : AppColors.surface,
-          indicatorColor: isDark
-              ? AppColors.primaryMuted.withOpacity(0.3)
-              : AppColors.primaryMuted,
-          surfaceTintColor: Colors.transparent,
+          backgroundColor: AppColors.surface,
+          elevation: 0,
+          indicatorColor: AppColors.primaryLight.withValues(alpha: 0.1),
           labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              );
-            }
-            return TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isDark
-                  ? AppColors.textInverseSecondary
-                  : AppColors.textSecondary,
+            final color = states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.textSecondary;
+            return AppTextStyles.label.copyWith(
+              color: color,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.bold
+                  : FontWeight.w500,
             );
           }),
           iconTheme: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(color: AppColors.primary, size: 24);
-            }
-            return IconThemeData(
-              color: isDark
-                  ? AppColors.textInverseSecondary
-                  : AppColors.textSecondary,
-              size: 24,
-            );
+            final color = states.contains(WidgetState.selected)
+                ? AppColors.primary
+                : AppColors.textSecondary;
+            return IconThemeData(color: color, size: 24);
           }),
         ),
         child: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             border: Border(
-              top: BorderSide(
-                color: isDark ? AppColors.darkBorder : AppColors.border,
-                width: 1,
-              ),
+              top: BorderSide(color: AppColors.border, width: 0.5),
             ),
           ),
           child: NavigationBar(
+            height: 64,
             selectedIndex: currentIndex,
             onDestinationSelected: (index) =>
                 ref.read(navIndexProvider.notifier).state = index,
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             destinations: const [
               NavigationDestination(
                 icon: Icon(LucideIcons.home),
-                selectedIcon: Icon(LucideIcons.layoutGrid),
-                label: 'Beranda',
+                label: 'Dashboard',
               ),
               NavigationDestination(
                 icon: Icon(LucideIcons.list),
-                selectedIcon: Icon(LucideIcons.listTodo),
                 label: 'Transaksi',
               ),
               NavigationDestination(
                 icon: Icon(LucideIcons.barChart2),
-                selectedIcon: Icon(LucideIcons.barChart),
                 label: 'Laporan',
               ),
               NavigationDestination(
                 icon: Icon(LucideIcons.sparkles),
-                selectedIcon: Icon(LucideIcons.bot),
-                label: 'AI Advisor',
+                label: 'Advisor',
               ),
               NavigationDestination(
                 icon: Icon(LucideIcons.settings),
-                selectedIcon: Icon(LucideIcons.settings),
                 label: 'Setelan',
               ),
             ],

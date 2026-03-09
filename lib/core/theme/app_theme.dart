@@ -15,8 +15,8 @@ class AppTheme {
         error: AppColors.danger,
         brightness: Brightness.light,
       ),
-      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
-      textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(
+      fontFamily: GoogleFonts.outfit().fontFamily,
+      textTheme: GoogleFonts.outfitTextTheme().apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
       ),
@@ -40,18 +40,18 @@ class AppTheme {
           color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          fontFamily: 'Plus Jakarta Sans',
+          fontFamily: 'Outfit',
         ),
       ),
 
       // Card Theme (Japandi Style)
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: AppColors.surfaceCard,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border, width: 1),
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+          side: BorderSide.none,
         ),
       ),
 
@@ -60,16 +60,16 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.surfaceSubtle,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
@@ -90,28 +90,24 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Outfit',
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.border, width: 1.5),
+          side: const BorderSide(color: AppColors.border, width: 2.0),
           minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Outfit',
           ),
         ),
       ),
@@ -119,8 +115,8 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           textStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w700,
+            fontFamily: 'Outfit',
           ),
         ),
       ),
@@ -133,7 +129,7 @@ class AppTheme {
         unselectedItemColor: AppColors.textMuted,
         type: BottomNavigationBarType.fixed,
         showUnselectedLabels: false,
-        showSelectedLabels: false, // We'll handle labels manually
+        showSelectedLabels: false,
       ),
 
       // Bottom Sheet Theme
@@ -142,7 +138,7 @@ class AppTheme {
         modalBackgroundColor: Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
         ),
         clipBehavior: Clip.antiAlias,
       ),
@@ -151,7 +147,7 @@ class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
 
       dividerTheme: const DividerThemeData(
@@ -173,8 +169,8 @@ class AppTheme {
         error: AppColors.danger,
         brightness: Brightness.dark,
       ),
-      fontFamily: GoogleFonts.plusJakartaSans().fontFamily,
-      textTheme: GoogleFonts.plusJakartaSansTextTheme().apply(
+      fontFamily: GoogleFonts.outfit().fontFamily,
+      textTheme: GoogleFonts.outfitTextTheme().apply(
         bodyColor: AppColors.textInverse,
         displayColor: AppColors.textInverse,
       ),
