@@ -12,6 +12,7 @@ class AiTools {
         addCicilan,
         updateCicilan,
         recordCicilanPayment,
+        setDailyLimitStrategy,
       ],
     ),
   ];
@@ -230,6 +231,30 @@ class AiTools {
         ),
       },
       requiredProperties: ['cicilan_name'],
+    ),
+  );
+
+  // ─── 7. Set Daily Limit Strategy ───
+  static final setDailyLimitStrategy = FunctionDeclaration(
+    'set_daily_limit_strategy',
+    'Atur strategi Adaptive Daily Limit user (lebih ketat, seimbang, atau fleksibel).',
+    Schema(
+      SchemaType.object,
+      properties: {
+        'strategy': Schema(
+          SchemaType.string,
+          description:
+              'Strategi limit harian. conservative = ketat, balanced = default engine, flexible = lebih longgar.',
+          enumValues: ['conservative', 'balanced', 'flexible'],
+          nullable: true,
+        ),
+        'reason': Schema(
+          SchemaType.string,
+          description:
+              'Alasan singkat kenapa strategi ini disarankan, berdasarkan kondisi user.',
+          nullable: true,
+        ),
+      },
     ),
   );
 }

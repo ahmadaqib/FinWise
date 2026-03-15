@@ -7,12 +7,28 @@ import '../../../core/theme/app_spacing.dart';
 
 enum ActionCardStatus { pending, confirmed, cancelled }
 
+class ActionCardOption {
+  final String value;
+  final String label;
+  final String description;
+  final bool isRecommended;
+
+  const ActionCardOption({
+    required this.value,
+    required this.label,
+    required this.description,
+    this.isRecommended = false,
+  });
+}
+
 class ActionConfirmationCard extends StatelessWidget {
   final String title;
   final String description;
   final ActionCardStatus status;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
+  final List<ActionCardOption> options;
+  final ValueChanged<String>? onSelectOption;
 
   const ActionConfirmationCard({
     super.key,
@@ -21,6 +37,8 @@ class ActionConfirmationCard extends StatelessWidget {
     required this.status,
     this.onConfirm,
     this.onCancel,
+    this.options = const [],
+    this.onSelectOption,
   });
 
   @override
@@ -97,8 +115,49 @@ class ActionConfirmationCard extends StatelessWidget {
               ),
             ),
 
-            // Action Buttons (only when pending)
-            if (status == ActionCardStatus.pending)
+            // Option buttons for strategy-like actions
+            if (status == ActionCardStatus.pending && options.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < options.length; i++) ...[
+                      _ActionOptionTile(
+                        option: options[i],
+                        isDark: isDark,
+                        onTap: onSelectOption,
+                      ),
+                      if (i != options.length - 1)
+                        const SizedBox(height: AppSpacing.sm),
+                    ],
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onCancel,
+                        icon: const Icon(LucideIcons.x, size: 16),
+                        label: const Text('Batal'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          side: BorderSide(color: AppColors.danger),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Default confirm/cancel buttons
+            if (status == ActionCardStatus.pending && options.isEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppSpacing.lg,
@@ -192,6 +251,95 @@ class ActionConfirmationCard extends StatelessWidget {
       case ActionCardStatus.pending:
         return AppColors.primary;
     }
+  }
+}
+
+class _ActionOptionTile extends StatelessWidget {
+  final ActionCardOption option;
+  final bool isDark;
+  final ValueChanged<String>? onTap;
+
+  const _ActionOptionTile({
+    required this.option,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isRecommended = option.isRecommended;
+    final bgColor = isRecommended
+        ? AppColors.primary.withValues(alpha: isDark ? 0.22 : 0.10)
+        : (isDark ? AppColors.darkSurface : AppColors.surfaceSubtle);
+    final borderColor = isRecommended
+        ? AppColors.primary.withValues(alpha: 0.45)
+        : (isDark ? AppColors.darkBorder : AppColors.border);
+
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap == null ? null : () => onTap!(option.value),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      option.label,
+                      style: AppTextStyles.body.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? AppColors.textInverse
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  if (isRecommended)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Rekomendasi',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                option.description,
+                style: AppTextStyles.caption.copyWith(
+                  color: isDark
+                      ? AppColors.textInverseSecondary
+                      : AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

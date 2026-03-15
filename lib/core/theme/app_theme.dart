@@ -15,8 +15,8 @@ class AppTheme {
         error: AppColors.danger,
         brightness: Brightness.light,
       ),
-      fontFamily: GoogleFonts.outfit().fontFamily,
-      textTheme: GoogleFonts.outfitTextTheme().apply(
+      fontFamily: GoogleFonts.patrickHand().fontFamily,
+      textTheme: GoogleFonts.patrickHandTextTheme().apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
       ),
@@ -40,7 +40,7 @@ class AppTheme {
           color: AppColors.textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          fontFamily: 'Outfit',
+          fontFamily: 'Patrick Hand',
         ),
       ),
 
@@ -94,7 +94,7 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            fontFamily: 'Outfit',
+            fontFamily: 'Patrick Hand',
           ),
         ),
       ),
@@ -107,7 +107,7 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            fontFamily: 'Outfit',
+            fontFamily: 'Patrick Hand',
           ),
         ),
       ),
@@ -116,7 +116,7 @@ class AppTheme {
           foregroundColor: AppColors.primary,
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
-            fontFamily: 'Outfit',
+            fontFamily: 'Patrick Hand',
           ),
         ),
       ),
@@ -169,8 +169,8 @@ class AppTheme {
         error: AppColors.danger,
         brightness: Brightness.dark,
       ),
-      fontFamily: GoogleFonts.outfit().fontFamily,
-      textTheme: GoogleFonts.outfitTextTheme().apply(
+      fontFamily: GoogleFonts.patrickHand().fontFamily,
+      textTheme: GoogleFonts.patrickHandTextTheme().apply(
         bodyColor: AppColors.textInverse,
         displayColor: AppColors.textInverse,
       ),
@@ -192,7 +192,7 @@ class AppTheme {
           color: AppColors.textInverse,
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          fontFamily: 'Plus Jakarta Sans',
+          fontFamily: 'Patrick Hand',
         ),
       ),
 
@@ -248,7 +248,7 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: 'Patrick Hand',
           ),
         ),
       ),
@@ -263,7 +263,7 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: 'Patrick Hand',
           ),
         ),
       ),
@@ -272,7 +272,7 @@ class AppTheme {
           foregroundColor: AppColors.primaryLight,
           textStyle: const TextStyle(
             fontWeight: FontWeight.w600,
-            fontFamily: 'Plus Jakarta Sans',
+            fontFamily: 'Patrick Hand',
           ),
         ),
       ),

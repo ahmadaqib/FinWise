@@ -90,7 +90,28 @@ class _AiAdvisorScreenState extends ConsumerState<AiAdvisorScreen> {
                     title: msg.action!.displayTitle,
                     description: msg.action!.displayDescription,
                     status: msg.actionStatus,
-                    onConfirm: msg.actionStatus == ActionCardStatus.pending
+                    options: msg.action!.options
+                        .map(
+                          (option) => ActionCardOption(
+                            value: option.value,
+                            label: option.label,
+                            description: option.description,
+                            isRecommended:
+                                option.value == msg.action!.recommendedOption,
+                          ),
+                        )
+                        .toList(),
+                    onSelectOption: msg.actionStatus == ActionCardStatus.pending
+                        ? (selected) => ref
+                              .read(chatProvider.notifier)
+                              .confirmAction(
+                                msg.actionId!,
+                                optionValue: selected,
+                              )
+                        : null,
+                    onConfirm:
+                        msg.actionStatus == ActionCardStatus.pending &&
+                            msg.action!.options.isEmpty
                         ? () => ref
                               .read(chatProvider.notifier)
                               .confirmAction(msg.actionId!)

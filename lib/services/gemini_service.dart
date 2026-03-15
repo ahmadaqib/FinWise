@@ -9,8 +9,8 @@ final geminiServiceProvider = Provider<GeminiService>((ref) {
 
 class GeminiService {
   final UserProfileRepository _repo = UserProfileRepository();
-  static const int _maxOutputTokensText = 520;
-  static const int _maxOutputTokensFunctionCall = 420;
+  static const int _maxOutputTokensText = 1600;
+  static const int _maxOutputTokensFunctionCall = 1200;
 
   // Daftar model yang akan diputar (rotate model agar aman jika limit)
   final List<String> _models = [
@@ -55,7 +55,7 @@ class GeminiService {
                 : null,
             generationConfig: GenerationConfig(
               maxOutputTokens: _maxOutputTokensText,
-              temperature: 0.4,
+              temperature: 0.45,
             ),
           );
 
@@ -126,7 +126,7 @@ class GeminiService {
             tools: tools,
             generationConfig: GenerationConfig(
               maxOutputTokens: _maxOutputTokensFunctionCall,
-              temperature: 0.2,
+              temperature: 0.25,
             ),
           );
 

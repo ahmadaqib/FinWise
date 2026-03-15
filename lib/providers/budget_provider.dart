@@ -1,6 +1,7 @@
 // Core logic for calculating available budgets, tracking expenses,
 // and evaluating financial health scores in real-time.
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +25,7 @@ import '../data/models/income_source.dart';
 import '../data/models/ai_insight.dart';
 import '../data/repositories/user_profile_repository.dart';
 import 'user_profile_provider.dart';
+import 'daily_limit_strategy_provider.dart';
 
 final currentCycleProvider = Provider<Map<String, DateTime>>((ref) {
   final profile = ref.watch(userProfileProvider);
@@ -298,9 +300,226 @@ final adaptiveDailyLimitProvider = Provider<double>((ref) {
   return engine.adaptiveDailySafeLimit;
 });
 
-final dailySafeLimitProvider = Provider<double>((ref) {
-  return ref.watch(adaptiveDailyLimitProvider);
+class DailyLimitProjection {
+  final double dailyLimit;
+  final int daysToPayday;
+  final double forecastIncomeBeforePayday;
+  final double forecastBudgetUntilPayday;
+  final double estimatedRemainingAtPayday;
+
+  const DailyLimitProjection({
+    required this.dailyLimit,
+    required this.daysToPayday,
+    required this.forecastIncomeBeforePayday,
+    required this.forecastBudgetUntilPayday,
+    required this.estimatedRemainingAtPayday,
+  });
+}
+
+final dailyLimitProjectionProvider =
+    Provider.family<DailyLimitProjection, String>((ref, strategyKey) {
+      final adaptiveLimit = ref.watch(adaptiveDailyLimitProvider);
+      final remainingBudget = ref.watch(remainingBudgetProvider);
+      final healthScore = ref.watch(healthScoreProvider);
+      final cycle = ref.watch(currentCycleProvider);
+      final incomes = ref.watch(incomeProvider);
+      final cycleEnd = cycle['end']!;
+      final preset = resolveDailyLimitStrategyPreset(strategyKey);
+
+      return _buildDailyLimitProjection(
+        adaptiveLimit: adaptiveLimit,
+        remainingBudget: remainingBudget,
+        healthScore: healthScore,
+        strategyFactor: preset.factor,
+        strategyKey: preset.key,
+        now: DateTime.now(),
+        cycleEnd: cycleEnd,
+        incomes: incomes,
+      );
+    });
+
+final dailyLimitPreviewProvider = Provider.family<double, String>((
+  ref,
+  strategyKey,
+) {
+  return ref.watch(dailyLimitProjectionProvider(strategyKey)).dailyLimit;
 });
+
+final dailySafeLimitProvider = Provider<double>((ref) {
+  final strategy = ref.watch(dailyLimitStrategyProvider);
+  return ref.watch(dailyLimitPreviewProvider(strategy.strategyKey));
+});
+
+DailyLimitProjection _buildDailyLimitProjection({
+  required double adaptiveLimit,
+  required double remainingBudget,
+  required int healthScore,
+  required double strategyFactor,
+  required String strategyKey,
+  required DateTime now,
+  required DateTime cycleEnd,
+  required List<IncomeSource> incomes,
+}) {
+  final daysToPayday = _daysUntilPayday(now, cycleEnd);
+  final forecastIncome = _forecastIncomeBeforePayday(
+    incomes: incomes,
+    now: now,
+    cycleEnd: cycleEnd,
+  );
+  final forecastBudget = max(0.0, remainingBudget) + forecastIncome;
+  if (forecastBudget <= 0) {
+    return DailyLimitProjection(
+      dailyLimit: 0.0,
+      daysToPayday: daysToPayday,
+      forecastIncomeBeforePayday: 0.0,
+      forecastBudgetUntilPayday: 0.0,
+      estimatedRemainingAtPayday: 0.0,
+    );
+  }
+
+  final runwayLimit = forecastBudget / daysToPayday;
+  final engineeredLimit = max(0.0, adaptiveLimit * strategyFactor);
+
+  final floorRatio = _humanFloorRatio(
+    healthScore: healthScore,
+    strategyKey: strategyKey,
+  );
+  final ceilingRatio = _humanCeilingRatio(strategyKey);
+
+  final floorLimit = runwayLimit * floorRatio;
+  final ceilingLimit = runwayLimit * ceilingRatio;
+
+  final adjusted = max(engineeredLimit, floorLimit);
+  final dailyLimit = adjusted
+      .clamp(0.0, min(forecastBudget, ceilingLimit))
+      .toDouble();
+  final estimatedRemaining = max(
+    0.0,
+    forecastBudget - (dailyLimit * daysToPayday),
+  );
+
+  return DailyLimitProjection(
+    dailyLimit: dailyLimit,
+    daysToPayday: daysToPayday,
+    forecastIncomeBeforePayday: forecastIncome,
+    forecastBudgetUntilPayday: forecastBudget,
+    estimatedRemainingAtPayday: estimatedRemaining,
+  );
+}
+
+int _daysUntilPayday(DateTime now, DateTime cycleEnd) {
+  final today = DateTime(now.year, now.month, now.day);
+  final paydayEve = DateTime(cycleEnd.year, cycleEnd.month, cycleEnd.day);
+  final days = paydayEve.difference(today).inDays + 1;
+  return days <= 0 ? 1 : days;
+}
+
+double _forecastIncomeBeforePayday({
+  required List<IncomeSource> incomes,
+  required DateTime now,
+  required DateTime cycleEnd,
+}) {
+  if (incomes.isEmpty) return 0.0;
+
+  final start = DateTime(now.year, now.month, now.day);
+  final end = DateTime(cycleEnd.year, cycleEnd.month, cycleEnd.day);
+  if (end.isBefore(start)) return 0.0;
+
+  final windowStartMonth = DateTime(start.year, start.month, 1);
+  final windowEndMonth = DateTime(end.year, end.month, 1);
+
+  double forecast = 0.0;
+
+  for (final income in incomes) {
+    if (!income.isActive || income.amount <= 0) continue;
+
+    final reliability = _incomeForecastReliability(income.type);
+    if (reliability <= 0) continue;
+
+    var cursor = windowStartMonth;
+    while (!cursor.isAfter(windowEndMonth)) {
+      final day = _safeDayOfMonth(
+        cursor.year,
+        cursor.month,
+        income.receivedOnDay,
+      );
+      final dueDate = DateTime(cursor.year, cursor.month, day);
+      final isInsideWindow =
+          (dueDate.isAtSameMomentAs(start) || dueDate.isAfter(start)) &&
+          (dueDate.isAtSameMomentAs(end) || dueDate.isBefore(end));
+
+      if (isInsideWindow) {
+        forecast += income.amount * reliability;
+        break; // Satu sumber income dihitung maksimal sekali per horizon.
+      }
+      cursor = DateTime(cursor.year, cursor.month + 1, 1);
+    }
+  }
+
+  return forecast;
+}
+
+double _incomeForecastReliability(String type) {
+  switch (type) {
+    case 'fixed_monthly':
+      return 1.0;
+    case 'passive':
+      return 0.9;
+    case 'variable_monthly':
+      return 0.65;
+    case 'one_time':
+      return 0.0; // Tidak diprediksi tanpa tanggal eksplisit.
+    default:
+      return 0.6;
+  }
+}
+
+int _safeDayOfMonth(int year, int month, int requestedDay) {
+  final lastDay = DateTime(year, month + 1, 0).day;
+  return requestedDay.clamp(1, lastDay);
+}
+
+double _humanFloorRatio({
+  required int healthScore,
+  required String strategyKey,
+}) {
+  double base;
+  if (healthScore >= 85) {
+    base = 0.80;
+  } else if (healthScore >= 70) {
+    base = 0.72;
+  } else if (healthScore >= 50) {
+    base = 0.62;
+  } else if (healthScore >= 30) {
+    base = 0.52;
+  } else {
+    base = 0.42;
+  }
+
+  switch (strategyKey) {
+    case 'conservative':
+      base -= 0.10;
+      break;
+    case 'flexible':
+      base += 0.06;
+      break;
+    default:
+      break;
+  }
+
+  return base.clamp(0.35, 0.90);
+}
+
+double _humanCeilingRatio(String strategyKey) {
+  switch (strategyKey) {
+    case 'conservative':
+      return 0.95;
+    case 'flexible':
+      return 1.20;
+    default:
+      return 1.05;
+  }
+}
 
 // Helper for Phase 1 (will be replaced by Category model zone field in Phase 2)
 String _mapCategoryToZone(String categoryName) {

@@ -10,6 +10,7 @@ import '../data/repositories/ai_cache_repository.dart';
 import '../core/utils/currency_formatter.dart';
 import '../features/ai_advisor/widgets/action_confirmation_card.dart';
 import 'budget_provider.dart';
+import 'daily_limit_strategy_provider.dart';
 import 'transaction_provider.dart';
 import 'rpd_counter_provider.dart';
 
@@ -42,12 +43,16 @@ class ChatMessage {
 
   bool get isAction => action != null;
 
-  ChatMessage copyWith({String? text, ActionCardStatus? actionStatus}) {
+  ChatMessage copyWith({
+    String? text,
+    ActionCardStatus? actionStatus,
+    PendingAction? action,
+  }) {
     return ChatMessage(
       text: text ?? this.text,
       isUser: isUser,
       timestamp: timestamp,
-      action: action,
+      action: action ?? this.action,
       actionStatus: actionStatus ?? this.actionStatus,
       actionId: actionId,
     );
@@ -79,6 +84,7 @@ GAYA KOMUNIKASI:
 3. Sampaikan insight yang seimbang: risiko, peluang, dan langkah aksi.
 4. Jika ada peringatan, jelaskan alasan angka dan dampaknya, bukan hanya label warning.
 5. Hindari jawaban terlalu pendek yang tidak memberi konteks.
+6. Untuk pertanyaan kompleks, berikan jawaban lengkap dan tuntas, jangan berhenti di tengah.
 
 ATURAN ANALISIS:
 1. Utamakan konteks percakapan terbaru dan data finansial user saat ini.
@@ -86,12 +92,16 @@ ATURAN ANALISIS:
 3. Jangan menyalin semua data mentah; pilih 2-4 angka paling penting.
 4. Jika user meminta strategi, berikan minimal 2 opsi dengan trade-off singkat.
 5. Jika data kurang, tulis asumsi dengan jujur dalam 1 kalimat.
-6. Jika user meminta pencatatan/update data, gunakan tool function-calling yang sesuai.''';
+6. Jika user meminta pencatatan/update data, gunakan tool function-calling yang sesuai.
+7. Jika user tidak meminta singkat, prioritaskan jawaban komprehensif agar user tidak perlu banyak follow-up.
+8. Jika user minta ubah/atur Adaptive Daily Limit, gunakan tool set_daily_limit_strategy.
+9. Saat usulkan perubahan limit harian, tampilkan 3 opsi (Konservatif/Seimbang/Fleksibel) plus risiko singkatnya.''';
   }
 
   // ── FINANCIAL SNAPSHOT ──
   String _buildFinancialSnapshot() {
     final context = _ref.read(aiContextPackageProvider);
+    final limitStrategy = _ref.read(dailyLimitStrategyProvider);
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final daysRemaining = daysInMonth - now.day;
@@ -105,6 +115,7 @@ KONTEKS FINWISE (5-LAYER ENGINE):
 [LAYER 1: FLOW]
 Score Efisiensi: ${pct(context.flowScore)}
 Adaptive Daily Limit: ${fmt(context.adaptiveDailySafeLimit)}
+Strategi Limit Harian: ${limitStrategy.label} (${limitStrategy.factor.toStringAsFixed(2)}x, ${limitStrategy.riskLabel})
 Sisa Budget Bebas: ${fmt(context.remainingBudget)}
 Zona: S/F/G/F: ${fmt(context.zoneDistribution['shield'] ?? 0)} / ${fmt(context.zoneDistribution['flow'] ?? 0)} / ${fmt(context.zoneDistribution['grow'] ?? 0)} / ${fmt(context.zoneDistribution['free'] ?? 0)}
 
@@ -324,8 +335,11 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
         'Pertanyaan terbaru user: $latestMessage\n\n'
         'FORMAT RESPONS (jika tidak sedang memanggil tool):\n'
         '1) Inti jawaban: 1-2 kalimat langsung menjawab pertanyaan.\n'
-        '2) Insight berbasis data: 2-3 poin dengan alasan singkat.\n'
-        '3) Aksi praktis 24 jam: 1 langkah paling berdampak.';
+        '2) Analisis berbasis data: 3-6 poin dengan alasan dan angka kunci.\n'
+        '3) Rencana aksi: hari ini, 7 hari, dan 30 hari.\n'
+        '4) Risiko yang harus dihindari.\n'
+        '5) Jangan memotong jawaban di tengah kalimat; selesaikan sampai tuntas.\n'
+        '6) Jika user minta ubah Adaptive Daily Limit, panggil tool set_daily_limit_strategy.';
   }
 
   /// Main entry: sends a message and handles both text and function-call responses.
@@ -354,7 +368,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
 
     // Generate cache key from question + financial snapshot + conversation
     final cacheInput =
-        'v2|$message|$snapshot|tx:$txLogDigest|$conversationContext|macro:$macroCacheSlice';
+        'v3|$message|$snapshot|tx:$txLogDigest|$conversationContext|macro:$macroCacheSlice';
     final cacheKey = md5.convert(utf8.encode(cacheInput)).toString();
 
     // 1. Check cache
@@ -509,15 +523,30 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
   }
 
   /// Confirm a pending action.
-  Future<void> confirmAction(String actionId) async {
+  Future<void> confirmAction(String actionId, {String? optionValue}) async {
     final index = state.indexWhere((m) => m.actionId == actionId);
     if (index == -1) return;
 
     final msg = state[index];
     if (msg.action == null) return;
 
+    var actionToExecute = msg.action!;
+    if (optionValue != null &&
+        optionValue.isNotEmpty &&
+        actionToExecute.optionArgKey != null) {
+      final args = Map<String, dynamic>.from(actionToExecute.args)
+        ..[actionToExecute.optionArgKey!] = optionValue;
+      actionToExecute = actionToExecute.copyWith(
+        args: args,
+        recommendedOption: optionValue,
+      );
+    }
+
     // Update status to confirmed
-    final updated = msg.copyWith(actionStatus: ActionCardStatus.confirmed);
+    final updated = msg.copyWith(
+      actionStatus: ActionCardStatus.confirmed,
+      action: actionToExecute,
+    );
     state = [...state]..[index] = updated;
 
     // Execute the action
@@ -525,7 +554,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
     state = [...state];
 
     final executor = AiActionExecutor(_ref);
-    final result = await executor.execute(msg.action!);
+    final result = await executor.execute(actionToExecute);
 
     isLoading = false;
 

@@ -4,9 +4,12 @@ import 'package:uuid/uuid.dart';
 import '../data/models/income_source.dart';
 import '../data/models/cicilan.dart';
 import '../data/models/cicilan_payment.dart';
+import '../core/utils/date_utils.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/cicilan_provider.dart';
+import '../providers/budget_provider.dart';
+import '../providers/daily_limit_strategy_provider.dart';
 
 /// Result of an AI action execution.
 class ActionResult {
@@ -17,19 +20,52 @@ class ActionResult {
   ActionResult({required this.success, required this.summary, this.error});
 }
 
+class PendingActionOption {
+  final String value;
+  final String label;
+  final String description;
+
+  const PendingActionOption({
+    required this.value,
+    required this.label,
+    required this.description,
+  });
+}
+
 /// Represents a pending action parsed from a Gemini FunctionCall.
 class PendingAction {
   final String toolName;
   final Map<String, dynamic> args;
   final String displayTitle;
   final String displayDescription;
+  final List<PendingActionOption> options;
+  final String? recommendedOption;
+  final String? optionArgKey;
 
   PendingAction({
     required this.toolName,
     required this.args,
     required this.displayTitle,
     required this.displayDescription,
+    this.options = const [],
+    this.recommendedOption,
+    this.optionArgKey,
   });
+
+  PendingAction copyWith({
+    Map<String, dynamic>? args,
+    String? recommendedOption,
+  }) {
+    return PendingAction(
+      toolName: toolName,
+      args: args ?? this.args,
+      displayTitle: displayTitle,
+      displayDescription: displayDescription,
+      options: options,
+      recommendedOption: recommendedOption ?? this.recommendedOption,
+      optionArgKey: optionArgKey,
+    );
+  }
 }
 
 /// Executes AI-requested actions by mapping FunctionCalls to repository methods.
@@ -125,6 +161,58 @@ class AiActionExecutor {
               '${args['note'] != null ? '\nCatatan: "${args['note']}"' : ''}',
         );
 
+      case 'set_daily_limit_strategy':
+        final currentStrategy = _ref
+            .read(dailyLimitStrategyProvider)
+            .strategyKey;
+        final currentProjection = _ref.read(
+          dailyLimitProjectionProvider(currentStrategy),
+        );
+        final currentLimit = currentProjection.dailyLimit;
+        final requestedStrategy = (args['strategy'] as String?)?.toLowerCase();
+        final cycle = _ref.read(currentCycleProvider);
+        final cycleEnd = cycle['end']!;
+        final nextPayday = DateTime(
+          cycleEnd.year,
+          cycleEnd.month,
+          cycleEnd.day + 1,
+        );
+        final daysToPayday =
+            AppDateUtils.getRemainingDaysInCycle(DateTime.now(), cycleEnd) + 1;
+
+        final optionCards = dailyLimitStrategyPresets.values.map((preset) {
+          final projection = _ref.read(
+            dailyLimitProjectionProvider(preset.key),
+          );
+          final projectedLimit = projection.dailyLimit;
+          final projectedSaldo = projection.estimatedRemainingAtPayday;
+          return PendingActionOption(
+            value: preset.key,
+            label: '${preset.label} • ${_formatCurrency(projectedLimit)}/hari',
+            description:
+                '${preset.riskLabel}: ${preset.riskDescription}\n'
+                'Estimasi sisa saldo saat gajian: ${_formatCurrency(projectedSaldo)}.',
+          );
+        }).toList();
+
+        return PendingAction(
+          toolName: functionName,
+          args: args,
+          displayTitle: '🎛️ Atur Adaptive Daily Limit',
+          displayDescription:
+              'Limit aktif saat ini: ${_formatCurrency(currentLimit)}/hari.\n'
+              'Sisa $daysToPayday hari menuju gajian ${nextPayday.day}/${nextPayday.month}.\n'
+              'Jika ritme saat ini dipertahankan, estimasi sisa saldo saat gajian: '
+              '${_formatCurrency(currentProjection.estimatedRemainingAtPayday)}.\n'
+              'Pilih strategi yang ingin dipakai. Setiap opsi punya trade-off risiko berbeda.',
+          options: optionCards,
+          recommendedOption:
+              dailyLimitStrategyPresets.containsKey(requestedStrategy)
+              ? requestedStrategy
+              : currentStrategy,
+          optionArgKey: 'strategy',
+        );
+
       default:
         return PendingAction(
           toolName: functionName,
@@ -151,6 +239,8 @@ class AiActionExecutor {
           return await _updateCicilan(action.args);
         case 'record_cicilan_payment':
           return await _recordCicilanPayment(action.args);
+        case 'set_daily_limit_strategy':
+          return await _setDailyLimitStrategy(action.args);
         default:
           return ActionResult(
             success: false,
@@ -355,6 +445,41 @@ class AiActionExecutor {
       summary:
           'Berhasil mencatat pembayaran ke-$paymentNumber dari ${cicilan.totalTenor} '
           'untuk "${cicilan.name}" sebesar ${_formatCurrency(amount)}.',
+    );
+  }
+
+  Future<ActionResult> _setDailyLimitStrategy(Map<String, dynamic> args) async {
+    final strategy = (args['strategy'] as String?)?.toLowerCase();
+    if (strategy == null || !dailyLimitStrategyPresets.containsKey(strategy)) {
+      return ActionResult(
+        success: false,
+        summary:
+            'Strategi belum dipilih. Pilih salah satu opsi: Konservatif, Seimbang, atau Fleksibel.',
+      );
+    }
+
+    final preset = resolveDailyLimitStrategyPreset(strategy);
+    final beforeLimit = _ref.read(dailySafeLimitProvider);
+    await _ref.read(dailyLimitStrategyProvider.notifier).setStrategy(strategy);
+
+    final projection = _ref.read(dailyLimitProjectionProvider(strategy));
+    final adjustedLimit = projection.dailyLimit;
+    final reason = (args['reason'] as String?)?.trim();
+    final delta = adjustedLimit - beforeLimit;
+    final changeText = delta.abs() < 1
+        ? 'hampir tidak berubah'
+        : delta >= 0
+        ? 'naik ${_formatCurrency(delta)}'
+        : 'turun ${_formatCurrency(delta.abs())}';
+
+    return ActionResult(
+      success: true,
+      summary:
+          'Strategi Adaptive Daily Limit diubah ke ${preset.label}. '
+          'Limit harian aktif sekarang ${_formatCurrency(adjustedLimit)}. '
+          'Estimasi sisa saldo saat gajian: ${_formatCurrency(projection.estimatedRemainingAtPayday)}. '
+          'Perubahan: $changeText. Profil risiko: ${preset.riskLabel.toLowerCase()}.'
+          '${reason != null && reason.isNotEmpty ? ' Catatan: $reason.' : ''}',
     );
   }
 
