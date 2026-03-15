@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../data/repositories/user_profile_repository.dart';
+import '../../../providers/user_profile_provider.dart';
 import '../../../shared/widgets/flat_card.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -38,14 +40,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final repo = UserProfileRepository();
-    final profile = repo.getProfile();
+    final profile = UserProfileRepository().getProfile();
 
     if (profile != null) {
       profile.name = _nameCtrl.text.trim();
-      profile.salaryDate = int.tryParse(_salaryDateCtrl.text) ?? 25;
+      final parsedSalaryDate = int.tryParse(_salaryDateCtrl.text);
+      profile.salaryDate = (parsedSalaryDate ?? 25).clamp(1, 31);
 
-      await repo.saveProfile(profile);
+      await ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(userProfileProvider.notifier).saveProfile(profile);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,6 +94,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                       validator: (v) =>
                           v!.isEmpty ? 'Nama tidak boleh kosong' : null,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextFormField(
+                      controller: _salaryDateCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Tanggal Gajian (1-31)',
+                        prefixIcon: Icon(LucideIcons.calendarDays),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        final day = int.tryParse(v ?? '');
+                        if (day == null || day < 1 || day > 31) {
+                          return 'Masukkan tanggal 1-31';
+                        }
+                        return null;
+                      },
                     ),
                   ],
                 ),

@@ -71,22 +71,22 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 
   // ── PERSONA ──
   String _buildPersona() {
-    return '''Anda adalah FinWise AI — penasihat keuangan pribadi dengan pola pikir Warren Buffett dan kejelian analis keuangan berpengalaman 80 tahun.
-78: Kepribadian: Tegas, to-the-point, berbasis data, selalu prioritaskan keamanan modal sebelum pertumbuhan.
+    return '''Anda adalah FinWise AI Advisor, partner keuangan pribadi yang human, jelas, dan berbasis data.
 
-KEMAMPUAN ANALISIS:
-1. Kamu memiliki akses pengetahuan mendalam tentang kondisi pasar global dan algoritma FinWise 5-Layer.
-2. Selalu gunakan metrik FWS (FinWise Score) dan Spending Velocity dalam analisismu.
-3. Fokus pada perlindungan nilai (hedging) dan diversifikasi yang cerdas berdasarkan Cash Flow Quadrant user.
+GAYA KOMUNIKASI:
+1. Gunakan bahasa Indonesia kasual-profesional, natural seperti advisor manusia.
+2. Jawab inti pertanyaan dulu dalam 1-2 kalimat, lalu jelaskan sebab-akibatnya.
+3. Sampaikan insight yang seimbang: risiko, peluang, dan langkah aksi.
+4. Jika ada peringatan, jelaskan alasan angka dan dampaknya, bukan hanya label warning.
+5. Hindari jawaban terlalu pendek yang tidak memberi konteks.
 
-ATURAN KETAT:
-1. DILARANG mengulang data keuangan user kecuali ditanya spesifik.
-2. DILARANG basa-basi. LANGSUNG ke inti jawaban.
-3. Jawaban MAKSIMAL 3 poin ringkas.
-4. Gunakan metrik "Adaptive Daily Limit" saat user bertanya tentang budget harian.
-5. Jika FWS < 400 (Fragile/Surviving): Fokus pada fundamental (Layer 1 FLOW).
-6. Gunakan bahasa kasual Indonesia.
-7. WAJIB pahami konteks percakapan terbaru, jangan jawab seolah ini pertanyaan pertama.''';
+ATURAN ANALISIS:
+1. Utamakan konteks percakapan terbaru dan data finansial user saat ini.
+2. Gunakan metrik FinWise saat relevan: Adaptive Daily Limit, Spending Velocity, FWS, dan Flow Score.
+3. Jangan menyalin semua data mentah; pilih 2-4 angka paling penting.
+4. Jika user meminta strategi, berikan minimal 2 opsi dengan trade-off singkat.
+5. Jika data kurang, tulis asumsi dengan jujur dalam 1 kalimat.
+6. Jika user meminta pencatatan/update data, gunakan tool function-calling yang sesuai.''';
   }
 
   // ── FINANCIAL SNAPSHOT ──
@@ -126,7 +126,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
   }
 
   // ── TRANSACTION LOG ──
-  String _buildTransactionLog() {
+  String _buildTransactionLog({int maxItems = 12}) {
     final transactions = _ref.read(transactionProvider);
     final now = DateTime.now();
 
@@ -138,7 +138,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
 
     if (monthly.isEmpty) return 'LOG TRANSAKSI: Belum ada transaksi bulan ini.';
 
-    final capped = monthly.take(30);
+    final capped = monthly.take(maxItems);
 
     final monthNames = [
       'Jan',
@@ -167,7 +167,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
         })
         .join('\n');
 
-    return 'LOG TRANSAKSI (${monthly.length} item, terbaru dulu):\n$lines';
+    return 'LOG TRANSAKSI (${monthly.length} item, dikirim ${capped.length} terbaru):\n$lines';
   }
 
   String _buildConversationContext({int maxTurns = 10}) {
@@ -234,7 +234,14 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
       return true;
     }
 
-    const geoKeywords = ['amerika', 'china', 'eropa', 'rusia', 'ukraina'];
+    const geoKeywords = [
+      'amerika',
+      'china',
+      'eropa',
+      'rusia',
+      'ukraina',
+      'iran',
+    ];
     const impactKeywords = [
       'ekonomi',
       'pasar',
@@ -252,6 +259,21 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
 
     return geoKeywords.any(lower.contains) &&
         impactKeywords.any(lower.contains);
+  }
+
+  bool _needsDetailedTransactionLog(String message) {
+    final lower = message.toLowerCase();
+    const detailKeywords = [
+      'riwayat transaksi',
+      'transaksi terakhir',
+      'detail transaksi',
+      'list transaksi',
+      'pengeluaran bulan ini',
+      'kategori pengeluaran',
+      'rekap transaksi',
+      'histori transaksi',
+    ];
+    return detailKeywords.any(lower.contains);
   }
 
   Future<String?> _buildGlobalMacroContext(String message) async {
@@ -280,6 +302,13 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
     return '${compact.substring(0, maxChars)}...';
   }
 
+  bool _isGeminiServiceError(String response) {
+    final lower = response.toLowerCase();
+    return lower.contains('belum mengatur gemini api key') ||
+        lower.contains('semua kombinasi api key') ||
+        lower.contains('sedang limit/error');
+  }
+
   String _composeUserPrompt({
     required String conversationContext,
     required String transactionLog,
@@ -292,7 +321,11 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
               'Gunakan konteks global hanya jika relevan dengan pertanyaan user.';
 
     return '$conversationContext\n\n$transactionLog$macroBlock\n\n'
-        'Pertanyaan terbaru user: $latestMessage';
+        'Pertanyaan terbaru user: $latestMessage\n\n'
+        'FORMAT RESPONS (jika tidak sedang memanggil tool):\n'
+        '1) Inti jawaban: 1-2 kalimat langsung menjawab pertanyaan.\n'
+        '2) Insight berbasis data: 2-3 poin dengan alasan singkat.\n'
+        '3) Aksi praktis 24 jam: 1 langkah paling berdampak.';
   }
 
   /// Main entry: sends a message and handles both text and function-call responses.
@@ -308,7 +341,10 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
     state = [...state];
 
     final snapshot = _buildFinancialSnapshot();
-    final txLog = _buildTransactionLog();
+    final txLog = _buildTransactionLog(
+      maxItems: _needsDetailedTransactionLog(message) ? 30 : 12,
+    );
+    final txLogDigest = md5.convert(utf8.encode(txLog)).toString();
     final conversationContext = _buildConversationContext(maxTurns: 10);
     final needsMacroContext = _needsGlobalMacroContext(message);
     final utcNow = DateTime.now().toUtc();
@@ -318,7 +354,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
 
     // Generate cache key from question + financial snapshot + conversation
     final cacheInput =
-        '$message|$snapshot|$conversationContext|macro:$macroCacheSlice';
+        'v2|$message|$snapshot|tx:$txLogDigest|$conversationContext|macro:$macroCacheSlice';
     final cacheKey = md5.convert(utf8.encode(cacheInput)).toString();
 
     // 1. Check cache
@@ -424,7 +460,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
             textResponse ?? response.text ?? 'Tidak ada respons.';
 
         // Cache the response
-        await AiCacheRepository().cacheResponse(cacheKey, responseText);
+        await cacheRepo.cacheResponse(cacheKey, responseText);
 
         isLoading = false;
         state = [
@@ -443,7 +479,10 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
           userPrompt,
           systemContext: systemContext,
         );
-        await RpdCounter.increment();
+        if (!_isGeminiServiceError(fallbackText)) {
+          await RpdCounter.increment();
+          await cacheRepo.cacheResponse(cacheKey, fallbackText);
+        }
 
         isLoading = false;
         state = [

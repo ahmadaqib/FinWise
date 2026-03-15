@@ -101,8 +101,9 @@ final dailyInsightProvider = FutureProvider<String?>((ref) async {
     final response = await gemini.askAdvisor(
       prompt,
       systemContext:
-          'Kamu adalah analis FinWise. Patuhi sinyal algoritma internal, '
-          'hindari saran generik, dan jawab maksimal 3 poin pendek.',
+          'Kamu adalah advisor keuangan personal FinWise yang komunikatif dan '
+          'jelas. Pakai bahasa Indonesia natural, jelaskan sebab-akibat '
+          'berbasis data, dan berikan insight seimbang (risiko + peluang + aksi).',
     );
 
     if (_isGeminiServiceError(response)) {
@@ -142,7 +143,7 @@ String _buildDailyFingerprint({
       .join('|');
 
   return [
-    'v2',
+    'v3',
     '${now.year}-${now.month}-${now.day}',
     'remaining:${_bucket(context.remainingBudget, 50000).toInt()}',
     'limit:${_bucket(context.adaptiveDailySafeLimit, 10000).toInt()}',
@@ -177,6 +178,26 @@ String _buildPrompt({
             )
             .join('\n');
 
+  final positiveSignals = <String>[];
+  if (context.flowScore >= 70) {
+    positiveSignals.add(
+      'Flow score ${context.flowScore.toStringAsFixed(1)} menunjukkan kontrol pengeluaran cukup sehat.',
+    );
+  }
+  if (context.spendingVelocity <= 1.0) {
+    positiveSignals.add(
+      'Spending velocity ${context.spendingVelocity.toStringAsFixed(2)}x masih dalam ritme aman.',
+    );
+  }
+  if (context.currentFWS >= 450) {
+    positiveSignals.add(
+      'FWS ${context.currentFWS.toStringAsFixed(0)} berada di band ${context.fwsBand} dan bisa dijaga untuk naik bertahap.',
+    );
+  }
+  final positiveSummary = positiveSignals.isEmpty
+      ? '- Belum ada sinyal positif dominan; fokuskan perbaikan ritme belanja.'
+      : positiveSignals.take(2).map((signal) => '- $signal').join('\n');
+
   return '''KONTEKS SIKLUS KEUANGAN (${cycleStart.day}/${cycleStart.month} - ${cycleEnd.day}/${cycleEnd.month})
 - Sisa budget bebas: ${CurrencyFormatter.format(context.remainingBudget)}
 - Adaptive Daily Limit (FlowEngine): ${CurrencyFormatter.format(context.adaptiveDailySafeLimit)}
@@ -191,17 +212,21 @@ String _buildPrompt({
 TRIGGER RULE-ENGINE:
 $triggerSummary
 
+SINYAL POSITIF SAAT INI:
+$positiveSummary
+
 TUGAS:
-1. Beri 3 insight tajam, 1 kalimat per poin.
-2. Wajib merujuk metrik/trigger di atas (jangan generic).
-3. Minimal 1 poin harus aksi 24 jam ke depan.
+1. Beri tepat 3 poin insight, tiap poin 2 kalimat (diagnosis + aksi konkret).
+2. Wajib merujuk metrik/trigger di atas dan minimal 1 angka per poin.
+3. Komposisi poin: kondisi utama, peluang/perbaikan, dan aksi 24 jam.
 4. Setiap poin harus punya label risiko: [AMAN], [WASPADA], atau [KRITIS].
-5. Bahasa kasual Indonesia, langsung ke inti.
+5. Bahasa kasual Indonesia yang natural, hindari gaya robotik.
+6. Jangan hanya mengulang kata "warning"; jelaskan kenapa dan dampaknya.
 
 FORMAT WAJIB:
-1. ...
-2. ...
-3. ...''';
+1. [LABEL] ...
+2. [LABEL] ...
+3. [LABEL] ...''';
 }
 
 String _buildLocalAdaptiveInsight({
@@ -211,59 +236,47 @@ String _buildLocalAdaptiveInsight({
   required int remainingDays,
   required List<AiInsight> algorithmInsights,
 }) {
-  final lines = <String>[];
+  final overallLabel = _overallRiskLabel(
+    context: context,
+    healthScore: healthScore,
+  );
+  final safeLimit = context.adaptiveDailySafeLimit > 0
+      ? context.adaptiveDailySafeLimit
+      : 0.0;
+  final budgetLeft = CurrencyFormatter.format(context.remainingBudget);
+  final dailyLimit = CurrencyFormatter.format(safeLimit);
 
-  for (final insight in algorithmInsights.take(2)) {
-    lines.add(
-      '${_riskTagFromType(insight.type)} ${_compactText(insight.title)}: ${_compactText(insight.content)}',
-    );
-  }
+  final primaryTrigger = algorithmInsights.isNotEmpty
+      ? algorithmInsights.first
+      : null;
+  final firstLine = primaryTrigger != null
+      ? '${_riskTagFromType(primaryTrigger.type)} ${_compactText(primaryTrigger.title)}. '
+            '${_compactText(primaryTrigger.content)}'
+      : '[$overallLabel] Sisa budget bebas kamu sekarang $budgetLeft '
+            'dengan spending velocity ${context.spendingVelocity.toStringAsFixed(2)}x. '
+            'Ini jadi sinyal utama untuk atur ritme belanja sisa $remainingDays hari.';
 
-  if (lines.length < 3) {
-    if (context.remainingBudget <= 0 || context.adaptiveDailySafeLimit <= 0) {
-      lines.add(
-        '[KRITIS] Budget bebas sudah habis, hentikan belanja non-esensial sampai siklus berikutnya.',
-      );
-    } else {
-      lines.add(
-        '[${_overallRiskLabel(context: context, healthScore: healthScore)}] '
-        'Batas aman harian sekarang ${CurrencyFormatter.format(context.adaptiveDailySafeLimit)} '
-        'untuk menjaga sisa ${CurrencyFormatter.format(context.remainingBudget)} '
-        'selama $remainingDays hari.',
-      );
-    }
-  }
+  final secondLine = topCategorySummary.startsWith('Belum ada')
+      ? '[AMAN] Belum ada kategori pengeluaran dominan, ini peluang bagus untuk menjaga FLOW tetap stabil. '
+            'Pertahankan pola catatan harian supaya batas aman tetap terjaga.'
+      : '[WASPADA] Pengeluaran terbesar saat ini ada di $topCategorySummary. '
+            'Kontrol kategori ini dulu supaya velocity ${context.spendingVelocity.toStringAsFixed(2)}x bisa turun mendekati 1.00x.';
 
-  if (lines.length < 3) {
-    if (topCategorySummary.startsWith('Belum ada')) {
-      lines.add(
-        '[AMAN] Belum ada pola belanja dominan, pertahankan ritme supaya FLOW tetap stabil.',
-      );
-    } else {
-      lines.add(
-        '[WASPADA] Prioritaskan kontrol di kategori terbesar: $topCategorySummary.',
-      );
-    }
-  }
+  final thirdLine = safeLimit <= 0
+      ? '[KRITIS] Aksi 24 jam: hentikan dulu belanja non-prioritas dan catat hanya kebutuhan wajib. '
+            'Fokus menahan arus keluar sampai siklus berikutnya.'
+      : '[${overallLabel == 'AMAN' ? 'WASPADA' : overallLabel}] Aksi 24 jam: batasi total belanja hari ini maksimal $dailyLimit. '
+            'Langkah ini membantu menjaga sisa $budgetLeft tetap cukup untuk $remainingDays hari.';
 
-  if (lines.length < 3) {
-    lines.add(
-      '[WASPADA] Aksi 24 jam: jaga total belanja hari ini di bawah ${CurrencyFormatter.format(context.adaptiveDailySafeLimit)}.',
-    );
-  }
-
-  final normalizedLines = lines.take(3).toList();
-  return List.generate(
-    normalizedLines.length,
-    (index) => '${index + 1}. ${normalizedLines[index]}',
-  ).join('\n');
+  return '1. $firstLine\n2. $secondLine\n3. $thirdLine';
 }
 
 String _riskTagFromType(String type) {
   switch (type) {
     case 'warning':
-      return '[KRITIS]';
+      return '[WASPADA]';
     case 'achievement':
+    case 'opportunity':
       return '[AMAN]';
     default:
       return '[WASPADA]';

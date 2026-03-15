@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/ai_cache.dart';
 import '../../core/constants/app_constants.dart';
@@ -9,11 +11,13 @@ class AiCacheRepository {
     if (!Hive.isBoxOpen(boxName)) {
       await Hive.openBox<AiCache>(boxName);
     }
+    await cleanExpired();
   }
 
   Box<AiCache> get _box => Hive.box<AiCache>(boxName);
 
-  /// Get cached response if still valid
+  /// Get cached response if still valid.
+  /// Access updates LRU timestamp lazily.
   String? getCachedResponse(String cacheKey) {
     final entry = _box.get(cacheKey);
     if (entry == null) return null;
@@ -21,19 +25,31 @@ class AiCacheRepository {
       _box.delete(cacheKey);
       return null;
     }
+
+    final now = DateTime.now();
+    if (now.difference(entry.lastAccessedAt).inMinutes >= 1) {
+      unawaited(_box.put(cacheKey, entry.copyWith(lastAccessedAt: now)));
+    }
+
     return entry.response;
   }
 
-  /// Save a response to cache with FIFO eviction
+  /// Save a response to cache with LRU eviction.
   Future<void> cacheResponse(
     String cacheKey,
     String response, {
     int? ttlMinutes,
   }) async {
-    // Evict oldest entries if at capacity
+    await cleanExpired();
+
+    // Evict least recently used entries if at capacity.
     if (_box.length >= AppConstants.maxCacheEntries) {
       final entries = _box.values.toList()
-        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        ..sort((a, b) {
+          final byLastAccess = a.lastAccessedAt.compareTo(b.lastAccessedAt);
+          if (byLastAccess != 0) return byLastAccess;
+          return a.createdAt.compareTo(b.createdAt);
+        });
       final toRemove = entries.take(
         _box.length - AppConstants.maxCacheEntries + 1,
       );
@@ -42,13 +58,15 @@ class AiCacheRepository {
       }
     }
 
+    final now = DateTime.now();
     await _box.put(
       cacheKey,
       AiCache(
         cacheKey: cacheKey,
         response: response,
-        createdAt: DateTime.now(),
+        createdAt: now,
         ttlMinutes: ttlMinutes ?? AppConstants.cacheTtlMinutes,
+        lastAccessedAt: now,
       ),
     );
   }

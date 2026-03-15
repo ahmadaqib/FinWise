@@ -1,106 +1,134 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_primary_background"
-    android:padding="16dp">
-
-    <FrameLayout
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:background="@drawable/widget_blue_block" />
+    android:background="@drawable/widget_hd_root"
+    android:orientation="vertical"
+    android:padding="18dp">
 
     <LinearLayout
-        android:id="@+id/header_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <TextView
             android:id="@+id/tv_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/widget_muted_pill"
-            android:fontFamily="sans-serif-medium"
-            android:letterSpacing="0.12"
+            android:background="@drawable/widget_hd_chip"
+            android:fontFamily="cursive"
             android:paddingLeft="10dp"
-            android:paddingTop="6dp"
+            android:paddingTop="5dp"
             android:paddingRight="10dp"
-            android:paddingBottom="6dp"
-            android:text="BULAN INI"
+            android:paddingBottom="5dp"
+            android:text="CATATAN FLOW"
             android:textAllCaps="true"
-            android:textColor="#111827"
-            android:textSize="10sp" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/tv_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_above="@id/footer_block"
-        android:layout_below="@id/header_row"
-        android:layout_marginTop="16dp"
-        android:fontFamily="sans-serif-medium"
-        android:text="Sisa budget bebas"
-        android:textColor="#6B7280"
-        android:textSize="13sp" />
-
-    <LinearLayout
-        android:id="@+id/value_block"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_above="@id/footer_block"
-        android:layout_below="@id/tv_title"
-        android:layout_marginTop="6dp"
-        android:orientation="vertical">
+            android:textColor="#2D2D2D"
+            android:textSize="10sp"
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/tv_remaining_budget"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-black"
-            android:lineSpacingExtra="-2sp"
-            android:maxLines="2"
-            android:text="Rp 0"
-            android:textColor="#111827"
-            android:textSize="24sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/footer_block"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:background="@drawable/widget_muted_block"
-        android:gravity="center_vertical"
-        android:minHeight="54dp"
-        android:orientation="horizontal"
-        android:paddingLeft="12dp"
-        android:paddingTop="10dp"
-        android:paddingRight="12dp"
-        android:paddingBottom="10dp">
-
-        <TextView
-            android:id="@+id/tv_daily_limit_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
-            android:text="Limit harian"
-            android:textColor="#6B7280"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/tv_daily_limit"
+            android:id="@+id/tv_last_sync"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:fontFamily="sans-serif-black"
+            android:fontFamily="cursive"
             android:gravity="end"
-            android:text="Rp 0"
-            android:textColor="#3B82F6"
-            android:textSize="16sp" />
+            android:text="Sync --:--"
+            android:textColor="#2D2D2D"
+            android:textSize="11sp" />
     </LinearLayout>
-</RelativeLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="cursive"
+        android:text="Sisa budget bebas"
+        android:textColor="#2D2D2D"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_remaining_budget"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontFamily="cursive"
+        android:maxLines="2"
+        android:text="Rp 7.250.000"
+        android:textColor="#2D2D2D"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="#2D2D2D"
+        android:text="" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_hd_panel"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="cursive"
+                android:text="Adaptive Limit (AI)"
+                android:textColor="#2D2D2D"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_daily_limit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="cursive"
+                android:text="Rp 312.000"
+                android:textColor="#2D5DA1"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="cursive"
+                android:text="Menuju gajian"
+                android:textColor="#2D2D2D"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_days_remaining"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="cursive"
+                android:text="18 hari"
+                android:textColor="#FF4D4D"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

@@ -16,18 +16,20 @@ class AiCacheAdapter extends TypeAdapter<AiCache> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
+    final createdAt = fields[2] as DateTime;
     return AiCache(
       cacheKey: fields[0] as String,
       response: fields[1] as String,
-      createdAt: fields[2] as DateTime,
+      createdAt: createdAt,
       ttlMinutes: fields[3] as int,
+      lastAccessedAt: fields[4] as DateTime? ?? createdAt,
     );
   }
 
   @override
   void write(BinaryWriter writer, AiCache obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.cacheKey)
       ..writeByte(1)
@@ -35,7 +37,9 @@ class AiCacheAdapter extends TypeAdapter<AiCache> {
       ..writeByte(2)
       ..write(obj.createdAt)
       ..writeByte(3)
-      ..write(obj.ttlMinutes);
+      ..write(obj.ttlMinutes)
+      ..writeByte(4)
+      ..write(obj.lastAccessedAt);
   }
 
   @override

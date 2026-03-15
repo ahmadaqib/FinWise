@@ -21,7 +21,7 @@ class TransactionRepository {
   }
 
   Future<void> updateTransaction(Transaction transaction) async {
-    await transaction.save();
+    await _box.put(transaction.id, transaction);
   }
 
   Future<void> deleteTransaction(String id) async {

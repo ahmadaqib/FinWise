@@ -20,12 +20,21 @@ import '../algorithms/enough_anchor.dart';
 import '../algorithms/finwise_score.dart';
 import '../algorithms/ai_trigger_engine.dart';
 import '../data/models/ai_context_package.dart';
+import '../data/models/income_source.dart';
 import '../data/models/ai_insight.dart';
+import '../data/repositories/user_profile_repository.dart';
 import 'user_profile_provider.dart';
 
 final currentCycleProvider = Provider<Map<String, DateTime>>((ref) {
   final profile = ref.watch(userProfileProvider);
-  final salaryDate = profile?.salaryDate ?? 25;
+  final incomes = ref.watch(incomeProvider);
+  final persistedProfile = UserProfileRepository().getProfile();
+  final profileSalaryDate = profile?.salaryDate ?? persistedProfile?.salaryDate;
+  final inferredIncomeSalaryDate = _inferSalaryDateFromIncome(incomes);
+  final salaryDate = _resolveSalaryDate(
+    profileSalaryDate: profileSalaryDate,
+    inferredIncomeSalaryDate: inferredIncomeSalaryDate,
+  );
   return AppDateUtils.getCycleRange(salaryDate, DateTime.now());
 });
 
@@ -336,36 +345,70 @@ final healthScoreProvider = Provider<int>((ref) {
 });
 
 // Sync data to Android Home Widget
+Future<void> _homeWidgetSyncQueue = Future<void>.value();
+String? _lastWidgetPayloadSignature;
+
 final homeWidgetSyncProvider = Provider<void>((ref) {
   final remaining = ref.watch(remainingBudgetProvider);
   final dailyLimit = ref.watch(dailySafeLimitProvider);
   final healthScore = ref.watch(healthScoreProvider);
   final cycle = ref.watch(currentCycleProvider);
+  final cycleEnd = cycle['end']!;
   final daysRemaining = AppDateUtils.getRemainingDaysInCycle(
     DateTime.now(),
-    cycle['end']!,
+    cycleEnd,
+  );
+  final runwayDailyValue = _runwayDailyValue(
+    remainingBudget: remaining,
+    daysRemaining: daysRemaining,
   );
 
-  unawaited(
-    _syncHomeWidgetData(
-      remainingBudget: CurrencyFormatter.format(remaining),
-      dailyLimit: CurrencyFormatter.format(dailyLimit),
+  final payloadSignature = [
+    remaining.round(),
+    dailyLimit.round(),
+    healthScore,
+    daysRemaining,
+    cycleEnd.millisecondsSinceEpoch,
+  ].join('|');
+
+  if (payloadSignature == _lastWidgetPayloadSignature) {
+    return;
+  }
+  _lastWidgetPayloadSignature = payloadSignature;
+
+  final payload = _WidgetSyncPayload(
+    remainingBudget: CurrencyFormatter.format(remaining),
+    dailyLimit: CurrencyFormatter.format(dailyLimit),
+    healthScore: healthScore,
+    daysRemainingText: '$daysRemaining hari',
+    daysRemainingValue: daysRemaining,
+    healthStatus: _healthStatusLabel(healthScore),
+    healthTrend: _healthTrendLabel(healthScore),
+    remainingBudgetRaw: remaining,
+    dailyLimitRaw: dailyLimit,
+    cycleEnd: cycleEnd,
+    runwayDaily: CurrencyFormatter.format(runwayDailyValue),
+    runwayStatus: _runwayStatusLabel(
+      remainingBudget: remaining,
+      dailyLimit: dailyLimit,
+      daysRemaining: daysRemaining,
       healthScore: healthScore,
-      daysRemaining: '$daysRemaining hari',
-      healthStatus: _healthStatusLabel(healthScore),
-      healthTrend: _healthTrendLabel(healthScore),
     ),
+    runwayHint: _runwayHintText(
+      remainingBudget: remaining,
+      dailyLimit: dailyLimit,
+      daysRemaining: daysRemaining,
+      healthScore: healthScore,
+    ),
+    widgetLastSync: _widgetSyncClock(DateTime.now()),
   );
+
+  _homeWidgetSyncQueue = _homeWidgetSyncQueue
+      .then((_) => _syncHomeWidgetData(payload))
+      .catchError((_) {});
 });
 
-Future<void> _syncHomeWidgetData({
-  required String remainingBudget,
-  required String dailyLimit,
-  required int healthScore,
-  required String daysRemaining,
-  required String healthStatus,
-  required String healthTrend,
-}) async {
+Future<void> _syncHomeWidgetData(_WidgetSyncPayload payload) async {
   if (kIsWeb) return;
   if (defaultTargetPlatform != TargetPlatform.android &&
       defaultTargetPlatform != TargetPlatform.iOS) {
@@ -373,12 +416,50 @@ Future<void> _syncHomeWidgetData({
   }
 
   try {
-    await HomeWidget.saveWidgetData<String>('remainingBudget', remainingBudget);
-    await HomeWidget.saveWidgetData<String>('dailyLimit', dailyLimit);
-    await HomeWidget.saveWidgetData<int>('healthScore', healthScore);
-    await HomeWidget.saveWidgetData<String>('daysRemaining', daysRemaining);
-    await HomeWidget.saveWidgetData<String>('healthStatus', healthStatus);
-    await HomeWidget.saveWidgetData<String>('healthTrend', healthTrend);
+    final syncEpoch = DateTime.now().millisecondsSinceEpoch.toString();
+    await HomeWidget.saveWidgetData<String>(
+      'remainingBudget',
+      payload.remainingBudget,
+    );
+    await HomeWidget.saveWidgetData<String>('dailyLimit', payload.dailyLimit);
+    await HomeWidget.saveWidgetData<int>('healthScore', payload.healthScore);
+    await HomeWidget.saveWidgetData<String>(
+      'daysRemaining',
+      payload.daysRemainingText,
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'daysRemainingValue',
+      payload.daysRemainingValue.toString(),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'healthStatus',
+      payload.healthStatus,
+    );
+    await HomeWidget.saveWidgetData<String>('healthTrend', payload.healthTrend);
+    await HomeWidget.saveWidgetData<String>(
+      'remainingBudgetRaw',
+      payload.remainingBudgetRaw.round().toString(),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'dailyLimitRaw',
+      payload.dailyLimitRaw.round().toString(),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'cycleEndEpoch',
+      payload.cycleEnd.millisecondsSinceEpoch.toString(),
+    );
+    await HomeWidget.saveWidgetData<String>('runwayDaily', payload.runwayDaily);
+    await HomeWidget.saveWidgetData<String>(
+      'runwayStatus',
+      payload.runwayStatus,
+    );
+    await HomeWidget.saveWidgetData<String>('runwayHint', payload.runwayHint);
+    await HomeWidget.saveWidgetData<String>(
+      'widgetLastSync',
+      payload.widgetLastSync,
+    );
+    await HomeWidget.saveWidgetData<String>('widgetSyncEpoch', syncEpoch);
+
     await HomeWidget.updateWidget(
       name: 'DashboardWidgetProvider',
       iOSName: 'DashboardWidget',
@@ -387,11 +468,106 @@ Future<void> _syncHomeWidgetData({
       name: 'HealthSnapshotWidgetProvider',
       iOSName: 'HealthSnapshotWidget',
     );
+    await HomeWidget.updateWidget(
+      name: 'RunwayWidgetProvider',
+      iOSName: 'RunwayWidget',
+    );
   } on MissingPluginException {
     // Plugin may be unavailable in some runtime contexts (e.g. hot restart).
   } catch (_) {
     // Intentionally ignore non-critical widget sync failures.
   }
+}
+
+double _runwayDailyValue({
+  required double remainingBudget,
+  required int daysRemaining,
+}) {
+  final safeDays = daysRemaining <= 0 ? 1 : daysRemaining;
+  return remainingBudget / safeDays;
+}
+
+String _runwayStatusLabel({
+  required double remainingBudget,
+  required double dailyLimit,
+  required int daysRemaining,
+  required int healthScore,
+}) {
+  if (remainingBudget <= 0 || dailyLimit <= 0 || healthScore < 50) {
+    return 'KRITIS';
+  }
+
+  final runwayDaily = _runwayDailyValue(
+    remainingBudget: remainingBudget,
+    daysRemaining: daysRemaining,
+  );
+  if (healthScore < 70 || runwayDaily < (dailyLimit * 0.9)) {
+    return 'WASPADA';
+  }
+  return 'AMAN';
+}
+
+String _runwayHintText({
+  required double remainingBudget,
+  required double dailyLimit,
+  required int daysRemaining,
+  required int healthScore,
+}) {
+  final status = _runwayStatusLabel(
+    remainingBudget: remainingBudget,
+    dailyLimit: dailyLimit,
+    daysRemaining: daysRemaining,
+    healthScore: healthScore,
+  );
+
+  switch (status) {
+    case 'KRITIS':
+      return 'Tahan belanja non-esensial hari ini.';
+    case 'WASPADA':
+      return 'Patuhi limit ${CurrencyFormatter.format(dailyLimit)}.';
+    default:
+      return 'Ritme aman, tetap disiplin.';
+  }
+}
+
+String _widgetSyncClock(DateTime value) {
+  final hh = value.hour.toString().padLeft(2, '0');
+  final mm = value.minute.toString().padLeft(2, '0');
+  return '$hh:$mm';
+}
+
+class _WidgetSyncPayload {
+  final String remainingBudget;
+  final String dailyLimit;
+  final int healthScore;
+  final String daysRemainingText;
+  final int daysRemainingValue;
+  final String healthStatus;
+  final String healthTrend;
+  final double remainingBudgetRaw;
+  final double dailyLimitRaw;
+  final DateTime cycleEnd;
+  final String runwayDaily;
+  final String runwayStatus;
+  final String runwayHint;
+  final String widgetLastSync;
+
+  const _WidgetSyncPayload({
+    required this.remainingBudget,
+    required this.dailyLimit,
+    required this.healthScore,
+    required this.daysRemainingText,
+    required this.daysRemainingValue,
+    required this.healthStatus,
+    required this.healthTrend,
+    required this.remainingBudgetRaw,
+    required this.dailyLimitRaw,
+    required this.cycleEnd,
+    required this.runwayDaily,
+    required this.runwayStatus,
+    required this.runwayHint,
+    required this.widgetLastSync,
+  });
 }
 
 String _healthStatusLabel(int healthScore) {
@@ -406,4 +582,35 @@ String _healthTrendLabel(int healthScore) {
   if (healthScore >= 70) return 'Terkontrol';
   if (healthScore >= 50) return 'Jaga laju';
   return 'Rem belanja';
+}
+
+int? _inferSalaryDateFromIncome(List<IncomeSource> incomes) {
+  final candidates =
+      incomes
+          .where((i) => i.isActive && i.type == 'fixed_monthly')
+          .map((i) => i.receivedOnDay)
+          .where((d) => d >= 1 && d <= 31)
+          .toList()
+        ..sort();
+  if (candidates.isEmpty) return null;
+  return candidates.first;
+}
+
+int _resolveSalaryDate({
+  required int? profileSalaryDate,
+  required int? inferredIncomeSalaryDate,
+}) {
+  if (profileSalaryDate == null) {
+    return inferredIncomeSalaryDate ?? 25;
+  }
+
+  // Legacy profile often carries default 25. If income sources clearly indicate
+  // another received day, use that for cycle/widget calculation.
+  if (profileSalaryDate == 25 &&
+      inferredIncomeSalaryDate != null &&
+      inferredIncomeSalaryDate != 25) {
+    return inferredIncomeSalaryDate;
+  }
+
+  return profileSalaryDate.clamp(1, 31);
 }

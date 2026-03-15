@@ -17,6 +17,7 @@ import '../widgets/key_metrics_row.dart';
 import '../widgets/budget_meter_card.dart';
 import '../widgets/insight_card.dart';
 import '../widgets/cicilan_status_card.dart';
+import '../widgets/macro_info_carousel.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -106,6 +107,10 @@ class DashboardScreen extends ConsumerWidget {
                   );
                 },
               ),
+
+              const SizedBox(height: AppSpacing.lg),
+
+              const MacroInfoCarousel(),
 
               const SizedBox(height: AppSpacing.xxl),
 

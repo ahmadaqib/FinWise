@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 
 import '../data/models/transaction.dart';
 import '../data/repositories/transaction_repository.dart';
-import '../data/repositories/ai_cache_repository.dart';
 import 'alert_provider.dart';
 
 final transactionProvider =
@@ -90,6 +89,5 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
 
   void _triggerSideEffects() {
     _ref?.read(alertRuleProvider).runChecks();
-    AiCacheRepository().invalidateAll();
   }
 }

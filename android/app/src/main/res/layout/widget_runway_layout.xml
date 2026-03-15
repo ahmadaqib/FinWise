@@ -13,7 +13,6 @@
         android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/tv_health_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/widget_hd_chip"
@@ -22,7 +21,7 @@
             android:paddingTop="5dp"
             android:paddingRight="10dp"
             android:paddingBottom="5dp"
-            android:text="FINANCIAL PULSE"
+            android:text="RUNWAY GAJIAN"
             android:textAllCaps="true"
             android:textColor="#2D2D2D"
             android:textSize="10sp"
@@ -41,73 +40,41 @@
             android:textSize="11sp" />
     </LinearLayout>
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="cursive"
+        android:text="Rata-rata sisa/hari"
+        android:textColor="#2D2D2D"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_runway_daily"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:fontFamily="cursive"
+        android:maxLines="1"
+        android:text="Rp 312.000"
+        android:textColor="#2D5DA1"
+        android:textSize="30sp"
+        android:textStyle="bold" />
+
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="10dp"
-        android:layout_weight="1"
-        android:background="@drawable/widget_hd_panel_blue"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="12dp">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
             android:layout_weight="1"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="bottom"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tv_health_score"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="cursive"
-                    android:text="82"
-                    android:textColor="#2D2D2D"
-                    android:textSize="34sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginBottom="5dp"
-                    android:fontFamily="cursive"
-                    android:text="/100"
-                    android:textColor="#2D2D2D"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_health_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:fontFamily="cursive"
-                android:text="Stabil"
-                android:textColor="#2D2D2D"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="1dp"
-            android:layout_height="match_parent"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:background="#2D2D2D"
-            android:text="" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:background="@drawable/widget_hd_panel"
+            android:orientation="vertical"
+            android:padding="10dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -118,43 +85,68 @@
                 android:textSize="11sp" />
 
             <TextView
-                android:id="@+id/tv_days_remaining"
+                android:id="@+id/tv_runway_days"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:fontFamily="cursive"
                 android:text="18 hari"
                 android:textColor="#FF4D4D"
-                android:textSize="17sp"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/runway_status_panel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_hd_panel_yellow"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="cursive"
+                android:text="Status"
+                android:textColor="#2D2D2D"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/tv_runway_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="cursive"
+                android:text="AMAN"
+                android:textColor="#2D2D2D"
+                android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/widget_hd_panel_yellow"
-        android:orientation="vertical"
-        android:padding="10dp">
+        android:layout_weight="1"
+        android:background="@drawable/widget_hd_dashed_box"
+        android:gravity="center_vertical"
+        android:paddingLeft="10dp"
+        android:paddingTop="6dp"
+        android:paddingRight="10dp"
+        android:paddingBottom="6dp">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/tv_runway_hint"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:fontFamily="cursive"
-            android:text="Ritme"
+            android:maxLines="2"
+            android:text="Ritme aman, tetap disiplin."
             android:textColor="#2D2D2D"
-            android:textSize="11sp" />
-
-        <TextView
-            android:id="@+id/tv_health_trend"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:fontFamily="cursive"
-            android:text="Terkontrol"
-            android:textColor="#2D5DA1"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textSize="13sp" />
     </LinearLayout>
 </LinearLayout>

@@ -2,6 +2,13 @@ import 'dart:math';
 import '../data/models/flow_zone.dart';
 
 class FlowEngine {
+  static const double _minVelocityModifier = 0.45;
+  static const double _maxVelocityModifier = 1.15;
+  static const double _minProximityModifier = 0.45;
+  static const double _maxProximityModifier = 1.0;
+  static const double _floorFromBaseLimitRatio = 0.35;
+  static const double _ceilingFromBaseLimitRatio = 1.25;
+
   final FlowZone target;
   final double totalFreeBudget;
   final double spentShield;
@@ -62,10 +69,24 @@ class FlowEngine {
     if (remainingBudget <= 0) return 0.0;
     if (remainingDays <= 0) return remainingBudget;
 
-    double baseLimit = remainingBudget / remainingDays;
-    double proximityMod = _cycleProximityModifier();
-    double limit = baseLimit * behaviorSpendingVelocity * proximityMod;
-    return max(0.0, limit);
+    final double baseLimit = remainingBudget / remainingDays;
+    final double velocityMod = behaviorSpendingVelocity.clamp(
+      _minVelocityModifier,
+      _maxVelocityModifier,
+    );
+    final double proximityMod = _cycleProximityModifier().clamp(
+      _minProximityModifier,
+      _maxProximityModifier,
+    );
+
+    // Soft-brake: avoid unrealistically tiny daily limit while still
+    // penalizing overspending behavior and cycle mismatch.
+    final double rawLimit = baseLimit * velocityMod * proximityMod;
+    final double floorLimit = baseLimit * _floorFromBaseLimitRatio;
+    final double ceilingLimit = baseLimit * _ceilingFromBaseLimitRatio;
+    final double tunedLimit = rawLimit.clamp(floorLimit, ceilingLimit);
+
+    return max(0.0, min(remainingBudget, tunedLimit));
   }
 
   double _cycleProximityModifier() {

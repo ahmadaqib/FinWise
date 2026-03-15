@@ -8,7 +8,7 @@ import android.widget.RemoteViews
 import com.example.finwise_personal.R
 import es.antonborri.home_widget.HomeWidgetProvider
 
-class HealthSnapshotWidgetProvider : HomeWidgetProvider() {
+class RunwayWidgetProvider : HomeWidgetProvider() {
 
     override fun onUpdate(
         context: Context,
@@ -16,25 +16,33 @@ class HealthSnapshotWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences
     ) {
-        val healthScore = widgetData.getInt("healthScore", 0)
-        val healthStatus = widgetData.getString("healthStatus", "Perlu cek")
+        val runwayDaily = widgetData.getString("runwayDaily", "Rp 0")
+        val runwayStatus = widgetData.getString("runwayStatus", "WASPADA")
+        val runwayHint = widgetData.getString("runwayHint", "Pantau pengeluaran harian.")
         val daysRemaining = resolveDaysRemaining(widgetData)
-        val healthTrend = widgetData.getString("healthTrend", "Pantau")
         val lastSync = "Sync ${widgetData.getString("widgetLastSync", "--:--")}"
-        val statusColor = when (healthStatus?.uppercase()) {
-            "AMAN", "STABIL" -> Color.parseColor("#2D5DA1")
-            "WASPADA" -> Color.parseColor("#B07200")
-            else -> Color.parseColor("#FF4D4D")
+
+        val statusUpper = runwayStatus?.uppercase() ?: "WASPADA"
+        val statusPanelRes = when (statusUpper) {
+            "AMAN" -> R.drawable.widget_hd_panel_blue
+            "KRITIS" -> R.drawable.widget_hd_panel_red
+            else -> R.drawable.widget_hd_panel_yellow
+        }
+        val statusTextColor = when (statusUpper) {
+            "AMAN" -> Color.parseColor("#2D5DA1")
+            "KRITIS" -> Color.parseColor("#B32020")
+            else -> Color.parseColor("#7A5A00")
         }
 
         appWidgetIds.forEach { widgetId ->
-            val views = RemoteViews(context.packageName, R.layout.widget_health_layout).apply {
-                setTextViewText(R.id.tv_health_score, healthScore.toString())
-                setTextViewText(R.id.tv_health_status, healthStatus)
-                setTextViewText(R.id.tv_days_remaining, daysRemaining)
-                setTextViewText(R.id.tv_health_trend, healthTrend)
+            val views = RemoteViews(context.packageName, R.layout.widget_runway_layout).apply {
+                setTextViewText(R.id.tv_runway_daily, runwayDaily)
+                setTextViewText(R.id.tv_runway_status, statusUpper)
+                setTextViewText(R.id.tv_runway_hint, runwayHint)
+                setTextViewText(R.id.tv_runway_days, daysRemaining)
                 setTextViewText(R.id.tv_last_sync, lastSync)
-                setTextColor(R.id.tv_health_status, statusColor)
+                setTextColor(R.id.tv_runway_status, statusTextColor)
+                setInt(R.id.runway_status_panel, "setBackgroundResource", statusPanelRes)
             }
             appWidgetManager.updateAppWidget(widgetId, views)
         }

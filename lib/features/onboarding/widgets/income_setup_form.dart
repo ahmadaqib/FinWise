@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/user_profile.dart';
 import '../../../data/models/income_source.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../../data/repositories/income_source_repository.dart';
+import '../../../providers/user_profile_provider.dart';
 import '../../../shared/widgets/bottom_nav_shell.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -59,7 +61,10 @@ class _IncomeSetupFormState extends State<IncomeSetupForm> {
       cicilanNormal: CurrencyFormatter.parse(_cicilanNormalCtrl.text),
       isMonth1: true,
     );
-    await repo.saveProfile(profile);
+    await ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(userProfileProvider.notifier).saveProfile(profile);
 
     // Bootstrap initial income sources
     if (gaji1 > 0) {
