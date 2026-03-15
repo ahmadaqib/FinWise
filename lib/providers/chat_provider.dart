@@ -102,6 +102,8 @@ ATURAN ANALISIS:
   String _buildFinancialSnapshot() {
     final context = _ref.read(aiContextPackageProvider);
     final limitStrategy = _ref.read(dailyLimitStrategyProvider);
+    final todayExpense = _ref.read(todayExpenseProvider);
+    final remainingTodayLimit = _ref.read(dailyRemainingLimitProvider);
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final daysRemaining = daysInMonth - now.day;
@@ -115,6 +117,8 @@ KONTEKS FINWISE (5-LAYER ENGINE):
 [LAYER 1: FLOW]
 Score Efisiensi: ${pct(context.flowScore)}
 Adaptive Daily Limit: ${fmt(context.adaptiveDailySafeLimit)}
+Terpakai Hari Ini: ${fmt(todayExpense)}
+Sisa Limit Hari Ini: ${fmt(remainingTodayLimit)}
 Strategi Limit Harian: ${limitStrategy.label} (${limitStrategy.factor.toStringAsFixed(2)}x, ${limitStrategy.riskLabel})
 Sisa Budget Bebas: ${fmt(context.remainingBudget)}
 Zona: S/F/G/F: ${fmt(context.zoneDistribution['shield'] ?? 0)} / ${fmt(context.zoneDistribution['flow'] ?? 0)} / ${fmt(context.zoneDistribution['grow'] ?? 0)} / ${fmt(context.zoneDistribution['free'] ?? 0)}
@@ -368,7 +372,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
 
     // Generate cache key from question + financial snapshot + conversation
     final cacheInput =
-        'v3|$message|$snapshot|tx:$txLogDigest|$conversationContext|macro:$macroCacheSlice';
+        'v4|$message|$snapshot|tx:$txLogDigest|$conversationContext|macro:$macroCacheSlice';
     final cacheKey = md5.convert(utf8.encode(cacheInput)).toString();
 
     // 1. Check cache
@@ -422,15 +426,19 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
       final parts = candidate.content.parts;
 
       FunctionCall? functionCall;
-      String? textResponse;
+      final textChunks = <String>[];
 
       for (final part in parts) {
         if (part is FunctionCall) {
           functionCall = part;
         } else if (part is TextPart) {
-          textResponse = part.text;
+          final chunk = part.text.trim();
+          if (chunk.isNotEmpty) {
+            textChunks.add(chunk);
+          }
         }
       }
+      final textResponse = textChunks.join('\n').trim();
 
       if (functionCall != null) {
         // AI wants to perform an action — show confirmation card
@@ -446,7 +454,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
         isLoading = false;
 
         // If there's also text, show it first
-        if (textResponse != null && textResponse.isNotEmpty) {
+        if (textResponse.isNotEmpty) {
           state = [
             ...state,
             ChatMessage(
@@ -470,8 +478,9 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
         ];
       } else {
         // Plain text response
-        final responseText =
-            textResponse ?? response.text ?? 'Tidak ada respons.';
+        final responseText = textResponse.isNotEmpty
+            ? textResponse
+            : (response.text ?? 'Tidak ada respons.');
 
         // Cache the response
         await cacheRepo.cacheResponse(cacheKey, responseText);

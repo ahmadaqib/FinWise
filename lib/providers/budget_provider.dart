@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/utils/date_utils.dart';
 import 'package:home_widget/home_widget.dart';
 import '../core/utils/currency_formatter.dart';
@@ -189,7 +190,7 @@ final aiContextPackageProvider = Provider<AIContextPackage>((ref) {
   final cicilan = ref.watch(currentCicilanProvider);
   final freeBudget = ref.watch(freeBudgetProvider);
   final remaining = ref.watch(remainingBudgetProvider);
-  final adaptiveLimit = ref.watch(dailySafeLimitProvider);
+  final adaptiveLimit = ref.watch(dailyLimitTodayBaseProvider);
 
   final engine = ref.watch(flowEngineProvider);
   final spending = ref.watch(zoneSpendingProvider);
@@ -320,15 +321,20 @@ final dailyLimitProjectionProvider =
     Provider.family<DailyLimitProjection, String>((ref, strategyKey) {
       final adaptiveLimit = ref.watch(adaptiveDailyLimitProvider);
       final remainingBudget = ref.watch(remainingBudgetProvider);
+      final spentToday = ref.watch(todayExpenseProvider);
       final healthScore = ref.watch(healthScoreProvider);
       final cycle = ref.watch(currentCycleProvider);
       final incomes = ref.watch(incomeProvider);
       final cycleEnd = cycle['end']!;
       final preset = resolveDailyLimitStrategyPreset(strategyKey);
 
+      // Base limit harian dihitung dari budget "awal hari" agar tidak
+      // menghitung pengeluaran hari ini dua kali saat diturunkan ke sisa limit.
+      final dayStartRemainingBudget = remainingBudget + spentToday;
+
       return _buildDailyLimitProjection(
         adaptiveLimit: adaptiveLimit,
-        remainingBudget: remainingBudget,
+        remainingBudget: dayStartRemainingBudget,
         healthScore: healthScore,
         strategyFactor: preset.factor,
         strategyKey: preset.key,
@@ -348,6 +354,175 @@ final dailyLimitPreviewProvider = Provider.family<double, String>((
 final dailySafeLimitProvider = Provider<double>((ref) {
   final strategy = ref.watch(dailyLimitStrategyProvider);
   return ref.watch(dailyLimitPreviewProvider(strategy.strategyKey));
+});
+
+String? _dailyLimitLockKey;
+double? _dailyLimitLockValue;
+String? _dailyLimitSpentAnchorKey;
+double _dailyLimitSpentAnchor = 0.0;
+bool _isDailyLimitRuntimeHydrated = false;
+Completer<void>? _dailyLimitRuntimeHydrationCompleter;
+
+const String _dailyLimitLockKeyStorage = 'daily_limit_runtime_lock_key';
+const String _dailyLimitLockValueStorage = 'daily_limit_runtime_lock_value';
+const String _dailyLimitSpentAnchorKeyStorage =
+    'daily_limit_runtime_spent_anchor_key';
+const String _dailyLimitSpentAnchorValueStorage =
+    'daily_limit_runtime_spent_anchor_value';
+
+Future<void> _hydrateDailyLimitRuntimeState() async {
+  if (_isDailyLimitRuntimeHydrated) return;
+  if (_dailyLimitRuntimeHydrationCompleter != null) {
+    return _dailyLimitRuntimeHydrationCompleter!.future;
+  }
+
+  final completer = Completer<void>();
+  _dailyLimitRuntimeHydrationCompleter = completer;
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    _dailyLimitLockKey = prefs.getString(_dailyLimitLockKeyStorage);
+    _dailyLimitLockValue = prefs.getDouble(_dailyLimitLockValueStorage);
+    _dailyLimitSpentAnchorKey = prefs.getString(_dailyLimitSpentAnchorKeyStorage);
+    _dailyLimitSpentAnchor =
+        prefs.getDouble(_dailyLimitSpentAnchorValueStorage) ?? 0.0;
+    _isDailyLimitRuntimeHydrated = true;
+  } catch (_) {
+    // Ignore hydration errors and fall back to runtime state.
+  } finally {
+    completer.complete();
+    _dailyLimitRuntimeHydrationCompleter = null;
+  }
+}
+
+Future<void> _persistDailyLimitRuntimeState() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+
+    if (_dailyLimitLockKey == null) {
+      await prefs.remove(_dailyLimitLockKeyStorage);
+    } else {
+      await prefs.setString(_dailyLimitLockKeyStorage, _dailyLimitLockKey!);
+    }
+
+    if (_dailyLimitLockValue == null) {
+      await prefs.remove(_dailyLimitLockValueStorage);
+    } else {
+      await prefs.setDouble(_dailyLimitLockValueStorage, _dailyLimitLockValue!);
+    }
+
+    if (_dailyLimitSpentAnchorKey == null) {
+      await prefs.remove(_dailyLimitSpentAnchorKeyStorage);
+    } else {
+      await prefs.setString(
+        _dailyLimitSpentAnchorKeyStorage,
+        _dailyLimitSpentAnchorKey!,
+      );
+    }
+
+    await prefs.setDouble(
+      _dailyLimitSpentAnchorValueStorage,
+      _dailyLimitSpentAnchor,
+    );
+  } catch (_) {
+    // Ignore persistence errors and continue with runtime state.
+  }
+}
+
+final _dailyLimitRuntimeHydratorProvider = FutureProvider<void>((ref) async {
+  await _hydrateDailyLimitRuntimeState();
+});
+
+/// Resets today's daily-limit progress for a given strategy.
+/// Expenses before reset are used as anchor so remaining limit starts fresh.
+Future<void> resetDailyLimitProgressForToday({
+  required DateTime now,
+  required String strategyKey,
+  required double spentToday,
+  bool forceRecomputeBase = false,
+}) async {
+  final key = '${now.year}-${now.month}-${now.day}|$strategyKey';
+  _dailyLimitSpentAnchorKey = key;
+  _dailyLimitSpentAnchor = spentToday;
+
+  if (forceRecomputeBase) {
+    _dailyLimitLockKey = null;
+    _dailyLimitLockValue = null;
+  }
+
+  await _persistDailyLimitRuntimeState();
+}
+
+/// Base daily limit locked for the current date.
+/// Resets automatically at 00:00 or when strategy mode changes.
+final dailyLimitTodayBaseProvider = Provider<double>((ref) {
+  ref.watch(_dailyLimitRuntimeHydratorProvider);
+
+  final now = ref.watch(_clockTickProvider).value ?? DateTime.now();
+  final strategy = ref.watch(dailyLimitStrategyProvider).strategyKey;
+  final suggested = ref.watch(dailyLimitPreviewProvider(strategy));
+  final lockKey = '${now.year}-${now.month}-${now.day}|$strategy';
+
+  if (_dailyLimitLockKey != lockKey || _dailyLimitLockValue == null) {
+    _dailyLimitLockKey = lockKey;
+    _dailyLimitLockValue = suggested;
+    unawaited(_persistDailyLimitRuntimeState());
+  }
+
+  return _dailyLimitLockValue!;
+});
+
+/// Clock tick to ensure daily providers auto-refresh around midnight.
+final _clockTickProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now();
+  while (true) {
+    await Future<void>.delayed(const Duration(minutes: 1));
+    yield DateTime.now();
+  }
+});
+
+final todayExpenseProvider = Provider<double>((ref) {
+  final now = ref.watch(_clockTickProvider).value ?? DateTime.now();
+  final transactions = ref.watch(transactionProvider);
+
+  return transactions
+      .where(
+        (t) =>
+            t.type == 'expense' &&
+            t.date.year == now.year &&
+            t.date.month == now.month &&
+            t.date.day == now.day,
+      )
+      .fold(0.0, (sum, t) => sum + t.amount);
+});
+
+/// Remaining daily allowance for current date.
+/// Can be negative when user overspends today's limit.
+final dailyRemainingLimitProvider = Provider<double>((ref) {
+  ref.watch(_dailyLimitRuntimeHydratorProvider);
+
+  final now = ref.watch(_clockTickProvider).value ?? DateTime.now();
+  final strategy = ref.watch(dailyLimitStrategyProvider).strategyKey;
+  final key = '${now.year}-${now.month}-${now.day}|$strategy';
+  final dailyLimit = ref.watch(dailyLimitTodayBaseProvider);
+  final spentToday = ref.watch(todayExpenseProvider);
+  final spentAnchor = _dailyLimitSpentAnchorKey == key
+      ? _dailyLimitSpentAnchor
+      : 0.0;
+  final effectiveSpent = max(0.0, spentToday - spentAnchor);
+  return dailyLimit - effectiveSpent;
+});
+
+final dailyLimitResetCountdownProvider = Provider<String>((ref) {
+  final now = ref.watch(_clockTickProvider).value ?? DateTime.now();
+  final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+  final duration = nextMidnight.difference(now);
+
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60);
+  final hh = nextMidnight.hour.toString().padLeft(2, '0');
+  final mm = nextMidnight.minute.toString().padLeft(2, '0');
+  return 'Reset $hh:$mm • $hours jam $minutes menit lagi';
 });
 
 DailyLimitProjection _buildDailyLimitProjection({
@@ -569,7 +744,9 @@ String? _lastWidgetPayloadSignature;
 
 final homeWidgetSyncProvider = Provider<void>((ref) {
   final remaining = ref.watch(remainingBudgetProvider);
-  final dailyLimit = ref.watch(dailySafeLimitProvider);
+  final dailyLimit = ref.watch(dailyRemainingLimitProvider);
+  final dailyLimitBase = ref.watch(dailyLimitTodayBaseProvider);
+  final spentToday = ref.watch(todayExpenseProvider);
   final healthScore = ref.watch(healthScoreProvider);
   final cycle = ref.watch(currentCycleProvider);
   final cycleEnd = cycle['end']!;
@@ -585,6 +762,8 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
   final payloadSignature = [
     remaining.round(),
     dailyLimit.round(),
+    dailyLimitBase.round(),
+    spentToday.round(),
     healthScore,
     daysRemaining,
     cycleEnd.millisecondsSinceEpoch,
@@ -598,6 +777,8 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
   final payload = _WidgetSyncPayload(
     remainingBudget: CurrencyFormatter.format(remaining),
     dailyLimit: CurrencyFormatter.format(dailyLimit),
+    dailyLimitBase: CurrencyFormatter.format(dailyLimitBase),
+    todayExpense: CurrencyFormatter.format(spentToday),
     healthScore: healthScore,
     daysRemainingText: '$daysRemaining hari',
     daysRemainingValue: daysRemaining,
@@ -605,6 +786,8 @@ final homeWidgetSyncProvider = Provider<void>((ref) {
     healthTrend: _healthTrendLabel(healthScore),
     remainingBudgetRaw: remaining,
     dailyLimitRaw: dailyLimit,
+    dailyLimitBaseRaw: dailyLimitBase,
+    todayExpenseRaw: spentToday,
     cycleEnd: cycleEnd,
     runwayDaily: CurrencyFormatter.format(runwayDailyValue),
     runwayStatus: _runwayStatusLabel(
@@ -641,6 +824,14 @@ Future<void> _syncHomeWidgetData(_WidgetSyncPayload payload) async {
       payload.remainingBudget,
     );
     await HomeWidget.saveWidgetData<String>('dailyLimit', payload.dailyLimit);
+    await HomeWidget.saveWidgetData<String>(
+      'dailyLimitBase',
+      payload.dailyLimitBase,
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'todayExpense',
+      payload.todayExpense,
+    );
     await HomeWidget.saveWidgetData<int>('healthScore', payload.healthScore);
     await HomeWidget.saveWidgetData<String>(
       'daysRemaining',
@@ -662,6 +853,14 @@ Future<void> _syncHomeWidgetData(_WidgetSyncPayload payload) async {
     await HomeWidget.saveWidgetData<String>(
       'dailyLimitRaw',
       payload.dailyLimitRaw.round().toString(),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'dailyLimitBaseRaw',
+      payload.dailyLimitBaseRaw.round().toString(),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'todayExpenseRaw',
+      payload.todayExpenseRaw.round().toString(),
     );
     await HomeWidget.saveWidgetData<String>(
       'cycleEndEpoch',
@@ -758,6 +957,8 @@ String _widgetSyncClock(DateTime value) {
 class _WidgetSyncPayload {
   final String remainingBudget;
   final String dailyLimit;
+  final String dailyLimitBase;
+  final String todayExpense;
   final int healthScore;
   final String daysRemainingText;
   final int daysRemainingValue;
@@ -765,6 +966,8 @@ class _WidgetSyncPayload {
   final String healthTrend;
   final double remainingBudgetRaw;
   final double dailyLimitRaw;
+  final double dailyLimitBaseRaw;
+  final double todayExpenseRaw;
   final DateTime cycleEnd;
   final String runwayDaily;
   final String runwayStatus;
@@ -774,6 +977,8 @@ class _WidgetSyncPayload {
   const _WidgetSyncPayload({
     required this.remainingBudget,
     required this.dailyLimit,
+    required this.dailyLimitBase,
+    required this.todayExpense,
     required this.healthScore,
     required this.daysRemainingText,
     required this.daysRemainingValue,
@@ -781,6 +986,8 @@ class _WidgetSyncPayload {
     required this.healthTrend,
     required this.remainingBudgetRaw,
     required this.dailyLimitRaw,
+    required this.dailyLimitBaseRaw,
+    required this.todayExpenseRaw,
     required this.cycleEnd,
     required this.runwayDaily,
     required this.runwayStatus,

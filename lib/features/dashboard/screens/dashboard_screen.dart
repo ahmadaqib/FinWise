@@ -30,7 +30,11 @@ class DashboardScreen extends ConsumerWidget {
     final incomeTransactions = ref.watch(totalIncomeThisMonthProvider);
     final expense = ref.watch(totalExpenseThisMonthProvider);
     final remaining = ref.watch(remainingBudgetProvider);
-    final dailyLimit = ref.watch(dailySafeLimitProvider);
+    final dailyLimitBase = ref.watch(dailyLimitTodayBaseProvider);
+    final dailyLimitRemaining = ref.watch(dailyRemainingLimitProvider);
+    final dailyLimitResetCountdown = ref.watch(
+      dailyLimitResetCountdownProvider,
+    );
     final insightAsync = ref.watch(dailyInsightProvider);
 
     final totalAvailable = freeBudget + incomeTransactions;
@@ -56,7 +60,12 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: AppSpacing.xl),
 
-              KeyMetricsRow(remainingBudget: remaining, dailyLimit: dailyLimit),
+              KeyMetricsRow(
+                remainingBudget: remaining,
+                dailyLimitRemaining: dailyLimitRemaining,
+                dailyLimitBase: dailyLimitBase,
+                dailyLimitResetCountdown: dailyLimitResetCountdown,
+              ),
 
               const SizedBox(height: AppSpacing.lg),
 

@@ -168,7 +168,7 @@ class AiActionExecutor {
         final currentProjection = _ref.read(
           dailyLimitProjectionProvider(currentStrategy),
         );
-        final currentLimit = currentProjection.dailyLimit;
+        final currentLimit = _ref.read(dailyLimitTodayBaseProvider);
         final requestedStrategy = (args['strategy'] as String?)?.toLowerCase();
         final cycle = _ref.read(currentCycleProvider);
         final cycleEnd = cycle['end']!;
@@ -204,6 +204,7 @@ class AiActionExecutor {
               'Sisa $daysToPayday hari menuju gajian ${nextPayday.day}/${nextPayday.month}.\n'
               'Jika ritme saat ini dipertahankan, estimasi sisa saldo saat gajian: '
               '${_formatCurrency(currentProjection.estimatedRemainingAtPayday)}.\n'
+              'Saat strategi dipilih, progres limit hari ini akan di-reset dari titik sekarang.\n'
               'Pilih strategi yang ingin dipakai. Setiap opsi punya trade-off risiko berbeda.',
           options: optionCards,
           recommendedOption:
@@ -459,13 +460,21 @@ class AiActionExecutor {
     }
 
     final preset = resolveDailyLimitStrategyPreset(strategy);
-    final beforeLimit = _ref.read(dailySafeLimitProvider);
+    final beforeRemaining = _ref.read(dailyRemainingLimitProvider);
+    final spentToday = _ref.read(todayExpenseProvider);
     await _ref.read(dailyLimitStrategyProvider.notifier).setStrategy(strategy);
+    await resetDailyLimitProgressForToday(
+      now: DateTime.now(),
+      strategyKey: strategy,
+      spentToday: spentToday,
+      forceRecomputeBase: true,
+    );
 
     final projection = _ref.read(dailyLimitProjectionProvider(strategy));
-    final adjustedLimit = projection.dailyLimit;
+    final adjustedLimit = _ref.read(dailyLimitTodayBaseProvider);
+    final afterRemaining = _ref.read(dailyRemainingLimitProvider);
     final reason = (args['reason'] as String?)?.trim();
-    final delta = adjustedLimit - beforeLimit;
+    final delta = afterRemaining - beforeRemaining;
     final changeText = delta.abs() < 1
         ? 'hampir tidak berubah'
         : delta >= 0
@@ -476,7 +485,7 @@ class AiActionExecutor {
       success: true,
       summary:
           'Strategi Adaptive Daily Limit diubah ke ${preset.label}. '
-          'Limit harian aktif sekarang ${_formatCurrency(adjustedLimit)}. '
+          'Limit dasar hari ini ${_formatCurrency(adjustedLimit)} dan sisa limit di-reset ke ${_formatCurrency(afterRemaining)}. '
           'Estimasi sisa saldo saat gajian: ${_formatCurrency(projection.estimatedRemainingAtPayday)}. '
           'Perubahan: $changeText. Profil risiko: ${preset.riskLabel.toLowerCase()}.'
           '${reason != null && reason.isNotEmpty ? ' Catatan: $reason.' : ''}',

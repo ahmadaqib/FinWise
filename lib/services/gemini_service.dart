@@ -9,8 +9,8 @@ final geminiServiceProvider = Provider<GeminiService>((ref) {
 
 class GeminiService {
   final UserProfileRepository _repo = UserProfileRepository();
-  static const int _maxOutputTokensText = 1600;
-  static const int _maxOutputTokensFunctionCall = 1200;
+  static const int _maxOutputTokensText = 3072;
+  static const int _maxOutputTokensFunctionCall = 3072;
 
   // Daftar model yang akan diputar (rotate model agar aman jika limit)
   final List<String> _models = [

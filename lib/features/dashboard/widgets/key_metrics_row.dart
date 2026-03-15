@@ -7,12 +7,16 @@ import '../../../../shared/widgets/animated_counter.dart';
 
 class KeyMetricsRow extends StatelessWidget {
   final double remainingBudget;
-  final double dailyLimit;
+  final double dailyLimitRemaining;
+  final double dailyLimitBase;
+  final String dailyLimitResetCountdown;
 
   const KeyMetricsRow({
     super.key,
     required this.remainingBudget,
-    required this.dailyLimit,
+    required this.dailyLimitRemaining,
+    required this.dailyLimitBase,
+    required this.dailyLimitResetCountdown,
   });
 
   @override
@@ -51,17 +55,37 @@ class KeyMetricsRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Batas Aman Harian',
+                  'Sisa Limit Hari Ini',
                   style: AppTextStyles.label.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 AnimatedCounter(
-                  value: dailyLimit,
+                  value: dailyLimitRemaining,
                   formatter: CurrencyFormatter.format,
                   style: AppTextStyles.monoLarge.copyWith(
-                    color: AppColors.success,
+                    color: dailyLimitRemaining < 0
+                        ? AppColors.danger
+                        : AppColors.success,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  dailyLimitRemaining < 0
+                      ? 'Melebihi limit ${CurrencyFormatter.format(dailyLimitRemaining.abs())}'
+                      : 'Dari limit ${CurrencyFormatter.format(dailyLimitBase)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: dailyLimitRemaining < 0
+                        ? AppColors.danger
+                        : AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dailyLimitResetCountdown,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textMuted,
                   ),
                 ),
               ],

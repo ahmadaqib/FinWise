@@ -3,7 +3,6 @@ import '../services/notification_service.dart';
 import '../data/repositories/user_profile_repository.dart';
 import '../data/repositories/alert_repository.dart';
 import 'budget_provider.dart';
-import 'transaction_provider.dart';
 
 final alertRuleProvider = Provider<AlertRuleEngine>((ref) {
   return AlertRuleEngine(ref);
@@ -63,21 +62,9 @@ class AlertRuleEngine {
 
   void _checkDailyLimitExceeded() {
     if (!_isRuleEnabled('daily_limit')) return;
-    final dailyLimit = _ref.read(dailySafeLimitProvider);
-    final transactions = _ref.read(transactionProvider);
-    final now = DateTime.now();
+    final remainingDailyLimit = _ref.read(dailyRemainingLimitProvider);
 
-    final todayExpense = transactions
-        .where(
-          (t) =>
-              t.type == 'expense' &&
-              t.date.year == now.year &&
-              t.date.month == now.month &&
-              t.date.day == now.day,
-        )
-        .fold(0.0, (sum, t) => sum + t.amount);
-
-    if (todayExpense > dailyLimit) {
+    if (remainingDailyLimit < 0) {
       _notifService.showNotification(
         id: 3,
         title: '📉 Limit Harian Terlampaui',
