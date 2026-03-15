@@ -3,6 +3,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../services/gemini_service.dart';
+import '../services/macro_context_service.dart';
 import '../services/ai_tools.dart';
 import '../services/ai_action_executor.dart';
 import '../data/repositories/ai_cache_repository.dart';
@@ -84,7 +85,8 @@ ATURAN KETAT:
 3. Jawaban MAKSIMAL 3 poin ringkas.
 4. Gunakan metrik "Adaptive Daily Limit" saat user bertanya tentang budget harian.
 5. Jika FWS < 400 (Fragile/Surviving): Fokus pada fundamental (Layer 1 FLOW).
-6. Gunakan bahasa kasual Indonesia.''';
+6. Gunakan bahasa kasual Indonesia.
+7. WAJIB pahami konteks percakapan terbaru, jangan jawab seolah ini pertanyaan pertama.''';
   }
 
   // ── FINANCIAL SNAPSHOT ──
@@ -168,6 +170,131 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
     return 'LOG TRANSAKSI (${monthly.length} item, terbaru dulu):\n$lines';
   }
 
+  String _buildConversationContext({int maxTurns = 10}) {
+    final plainMessages = state
+        .where((m) => !m.isAction && m.text.trim().isNotEmpty)
+        .toList();
+
+    if (plainMessages.isEmpty) {
+      return 'RIWAYAT PERCAKAPAN: (kosong)';
+    }
+
+    // The latest user message is sent separately as "Pertanyaan terbaru".
+    if (plainMessages.last.isUser) {
+      plainMessages.removeLast();
+    }
+
+    if (plainMessages.isEmpty) {
+      return 'RIWAYAT PERCAKAPAN: (belum ada konteks sebelumnya)';
+    }
+
+    final recent = plainMessages.length <= maxTurns
+        ? plainMessages
+        : plainMessages.sublist(plainMessages.length - maxTurns);
+
+    final lines = recent
+        .map((m) {
+          final role = m.isUser ? 'USER' : 'AI';
+          final text = _singleLine(m.text, maxChars: 240);
+          return '[$role] $text';
+        })
+        .join('\n');
+
+    return 'RIWAYAT PERCAKAPAN TERBARU:\n$lines';
+  }
+
+  bool _needsGlobalMacroContext(String message) {
+    final lower = message.toLowerCase();
+    const primaryKeywords = [
+      'politik',
+      'ekonomi global',
+      'ekonomi dunia',
+      'makro',
+      'geopolitik',
+      'inflasi',
+      'resesi',
+      'suku bunga',
+      'bank sentral',
+      'the fed',
+      'fed',
+      'ecb',
+      'perang',
+      'tarif',
+      'sanksi',
+      'election',
+      'pemilu',
+      'berita terbaru',
+      'update dunia',
+      'harga minyak',
+      'pasar saham dunia',
+      'dollar',
+      'usd',
+    ];
+    if (primaryKeywords.any(lower.contains)) {
+      return true;
+    }
+
+    const geoKeywords = ['amerika', 'china', 'eropa', 'rusia', 'ukraina'];
+    const impactKeywords = [
+      'ekonomi',
+      'pasar',
+      'inflasi',
+      'suku bunga',
+      'investasi',
+      'rupiah',
+      'saham',
+      'obligasi',
+      'komoditas',
+      'minyak',
+      'tarif',
+      'sanksi',
+    ];
+
+    return geoKeywords.any(lower.contains) &&
+        impactKeywords.any(lower.contains);
+  }
+
+  Future<String?> _buildGlobalMacroContext(String message) async {
+    if (!_needsGlobalMacroContext(message)) {
+      return null;
+    }
+
+    try {
+      final snapshot = await _ref
+          .read(macroContextServiceProvider)
+          .fetchLatest()
+          .timeout(const Duration(seconds: 10), onTimeout: () => null);
+      if (snapshot == null || snapshot.headlines.isEmpty) {
+        return null;
+      }
+
+      return snapshot.toPromptBlock(maxItems: 6);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _singleLine(String input, {int maxChars = 200}) {
+    final compact = input.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= maxChars) return compact;
+    return '${compact.substring(0, maxChars)}...';
+  }
+
+  String _composeUserPrompt({
+    required String conversationContext,
+    required String transactionLog,
+    required String latestMessage,
+    String? globalMacroContext,
+  }) {
+    final macroBlock = globalMacroContext == null
+        ? ''
+        : '\n\n$globalMacroContext\n'
+              'Gunakan konteks global hanya jika relevan dengan pertanyaan user.';
+
+    return '$conversationContext\n\n$transactionLog$macroBlock\n\n'
+        'Pertanyaan terbaru user: $latestMessage';
+  }
+
   /// Main entry: sends a message and handles both text and function-call responses.
   Future<void> sendMessage(String message) async {
     if (message.trim().isEmpty) return;
@@ -182,9 +309,16 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
 
     final snapshot = _buildFinancialSnapshot();
     final txLog = _buildTransactionLog();
+    final conversationContext = _buildConversationContext(maxTurns: 10);
+    final needsMacroContext = _needsGlobalMacroContext(message);
+    final utcNow = DateTime.now().toUtc();
+    final macroCacheSlice = needsMacroContext
+        ? '${utcNow.year}-${utcNow.month}-${utcNow.day}-${utcNow.hour}'
+        : 'none';
 
-    // Generate cache key from question + financial snapshot hash
-    final cacheInput = '$message|$snapshot';
+    // Generate cache key from question + financial snapshot + conversation
+    final cacheInput =
+        '$message|$snapshot|$conversationContext|macro:$macroCacheSlice';
     final cacheKey = md5.convert(utf8.encode(cacheInput)).toString();
 
     // 1. Check cache
@@ -214,8 +348,14 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
       return;
     }
 
+    final globalMacroContext = await _buildGlobalMacroContext(message);
     final systemContext = '${_buildPersona()}\n\n$snapshot';
-    final userPrompt = '$txLog\n\nPertanyaan: $message';
+    final userPrompt = _composeUserPrompt(
+      conversationContext: conversationContext,
+      transactionLog: txLog,
+      latestMessage: message,
+      globalMacroContext: globalMacroContext,
+    );
 
     try {
       // Use function-calling endpoint
@@ -284,8 +424,6 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
             textResponse ?? response.text ?? 'Tidak ada respons.';
 
         // Cache the response
-        final cacheInput = '$message|$snapshot';
-        final cacheKey = md5.convert(utf8.encode(cacheInput)).toString();
         await AiCacheRepository().cacheResponse(cacheKey, responseText);
 
         isLoading = false;
@@ -301,8 +439,6 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
     } catch (e) {
       // Fallback to text-only mode
       try {
-        final systemContext = '${_buildPersona()}\n\n$snapshot';
-        final userPrompt = '$txLog\n\nPertanyaan: $message';
         final fallbackText = await _geminiService.askAdvisor(
           userPrompt,
           systemContext: systemContext,

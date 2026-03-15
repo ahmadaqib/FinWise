@@ -23,12 +23,20 @@ class BehaviorIntelligence {
         .fold(0.0, (sum, t) => sum + t.amount);
 
     double actualDailyRate = totalSpent / daysPassed;
-    if (actualDailyRate == 0)
+    if (actualDailyRate == 0) {
       return 1.1; // spending slower is good, but cap it?
+    }
 
     double ratio = actualDailyRate / idealDailyRate;
     // If ratio is 1.2 (20% overspending velocity), modifier is 1/1.2 = 0.83 (reduce limit)
     return 1 / ratio;
+  }
+
+  // Human-readable velocity ratio (ideal = 1.0x)
+  double get spendingVelocityRatio {
+    final modifier = spendingVelocityModifier;
+    if (modifier <= 0) return 1.0;
+    return 1 / modifier;
   }
 
   // Impulse rate: ratio of 'impulsive' mood transactions
@@ -56,8 +64,9 @@ class BehaviorIntelligence {
         .where((t) => t.transactionNature == 'liability')
         .fold(0.0, (sum, t) => sum + t.amount);
 
-    if (liabilitySpend == 0)
+    if (liabilitySpend == 0) {
       return assetSpend > 0 ? 10.0 : 1.0; // Avoid infinity
+    }
     return assetSpend / liabilitySpend;
   }
 

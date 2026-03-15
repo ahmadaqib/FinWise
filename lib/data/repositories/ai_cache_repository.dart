@@ -25,7 +25,11 @@ class AiCacheRepository {
   }
 
   /// Save a response to cache with FIFO eviction
-  Future<void> cacheResponse(String cacheKey, String response) async {
+  Future<void> cacheResponse(
+    String cacheKey,
+    String response, {
+    int? ttlMinutes,
+  }) async {
     // Evict oldest entries if at capacity
     if (_box.length >= AppConstants.maxCacheEntries) {
       final entries = _box.values.toList()
@@ -44,7 +48,7 @@ class AiCacheRepository {
         cacheKey: cacheKey,
         response: response,
         createdAt: DateTime.now(),
-        ttlMinutes: AppConstants.cacheTtlMinutes,
+        ttlMinutes: ttlMinutes ?? AppConstants.cacheTtlMinutes,
       ),
     );
   }

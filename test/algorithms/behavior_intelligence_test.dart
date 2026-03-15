@@ -32,6 +32,7 @@ void main() {
       // ratio = 2.0
       // modifier = 1 / 2.0 = 0.5
       expect(intel.spendingVelocityModifier, 0.5);
+      expect(intel.spendingVelocityRatio, 2.0);
     });
 
     test('Impulse rate overall calculation', () {

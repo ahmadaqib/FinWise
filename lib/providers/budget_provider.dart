@@ -195,7 +195,7 @@ final aiContextPackageProvider = Provider<AIContextPackage>((ref) {
     adaptiveDailySafeLimit: adaptiveLimit,
     zoneDistribution: spending,
     flowScore: engine.zoneEfficiencyScore,
-    spendingVelocity: behavior.spendingVelocityModifier,
+    spendingVelocity: behavior.spendingVelocityRatio,
     incomeByQuadrant: quadrant.incomeDistribution,
     freedomIndex: quadrant.freedomIndex,
     trajectory: 'stable', // Future: calculate from historical 3 months
@@ -260,6 +260,7 @@ final flowEngineProvider = Provider<FlowEngine>((ref) {
   final target = ref.watch(flowZoneProvider);
   final totalFreeBudget = ref.watch(freeBudgetProvider);
   final spending = ref.watch(zoneSpendingProvider);
+  final behavior = ref.watch(behaviorIntelligenceProvider);
   final cycle = ref.watch(currentCycleProvider);
   final now = DateTime.now();
   final start = cycle['start']!;
@@ -274,7 +275,7 @@ final flowEngineProvider = Provider<FlowEngine>((ref) {
     spentFree: spending['free'] ?? 0,
     remainingDays: AppDateUtils.getRemainingDaysInCycle(now, end),
     totalDaysInMonth: AppDateUtils.getDaysInCycle(start, end),
-    behaviorSpendingVelocity: 1.0, // Future: integrate Layer 3 velocity
+    behaviorSpendingVelocity: behavior.spendingVelocityModifier,
   );
 });
 
