@@ -70,6 +70,69 @@ class AiTriggerEngine {
       );
     }
 
+    // 5. Zone Overspent (SHIELD / FLOW / GROW)
+    context.zoneDistribution.forEach((zone, spent) {
+      if (zone == 'free') return; // Handled above
+      final targetPercent = _getTargetForZone(zone);
+      final targetAmount = context.freeBudget * (targetPercent / 100);
+      if (spent > targetAmount && targetAmount > 0) {
+        insights.add(
+          AiInsight(
+            id: const Uuid().v4(),
+            title: '⚠️ Zone ${zone.toUpperCase()} Overbudget',
+            content:
+                'Pengeluaran di zona $zone sudah melebihi target ${targetPercent.toInt()}%. Coba evaluasi pengeluaran di zona ini.',
+            type: 'warning',
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    });
+
+    // 6. Cycle Progress Anomaly
+    // Simplified cycle progress logic (assuming remainingDays and totalDays exist)
+    // For now we use spending velocity as a proxy which is already in Rule 1.
+    // Let's add an explicit "Budget Runway" check.
+    if (context.remainingBudget < (context.adaptiveDailySafeLimit * 3) && context.remainingBudget > 0) {
+       insights.add(
+        AiInsight(
+          id: const Uuid().v4(),
+          title: '⏳ Budget Menipis',
+          content:
+              'Sisa budget kamu tinggal sedikit. Dengan limit harian saat ini, budgetmu mungkin hanya cukup untuk 3 hari ke depan.',
+          type: 'warning',
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+
+    // 7. Emergency Fund Milestone
+    if (context.emergencyFundProgress >= 10 && context.emergencyFundProgress < 11) {
+       insights.add(
+        AiInsight(
+          id: const Uuid().v4(),
+          title: '🛡️ Langkah Awal Aman',
+          content:
+              'Dana darurat kamu sudah mencapai 10% dari target! Pertahankan konsistensi ZONE SHIELD.',
+          type: 'achievement',
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+
     return insights;
+  }
+
+  double _getTargetForZone(String zone) {
+    switch (zone) {
+      case 'shield':
+        return 25.0;
+      case 'flow':
+        return 45.0;
+      case 'grow':
+        return 20.0;
+      default:
+        return 10.0;
+    }
   }
 }

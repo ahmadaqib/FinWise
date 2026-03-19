@@ -27,6 +27,7 @@ import '../data/models/ai_insight.dart';
 import '../data/repositories/user_profile_repository.dart';
 import 'user_profile_provider.dart';
 import 'daily_limit_strategy_provider.dart';
+import 'emergency_fund_provider.dart';
 
 final currentCycleProvider = Provider<Map<String, DateTime>>((ref) {
   final profile = ref.watch(userProfileProvider);
@@ -39,6 +40,77 @@ final currentCycleProvider = Provider<Map<String, DateTime>>((ref) {
     inferredIncomeSalaryDate: inferredIncomeSalaryDate,
   );
   return AppDateUtils.getCycleRange(salaryDate, DateTime.now());
+});
+
+final cycleSyncProvider = FutureProvider<void>((ref) async {
+  final currentCycle = ref.watch(currentCycleProvider);
+  final start = currentCycle['start']!;
+  final prefs = await SharedPreferences.getInstance();
+  const lastStartKey = 'last_cycle_sync_start';
+
+  final lastStartStr = prefs.getString(lastStartKey);
+  final lastStart = lastStartStr != null ? DateTime.parse(lastStartStr) : null;
+
+  if (lastStart == null) {
+    // First time, just record current cycle
+    await prefs.setString(lastStartKey, start.toIso8601String());
+    return;
+  }
+
+  if (start.isAfter(lastStart)) {
+    // NEW CYCLE DETECTED!
+    // 1. Calculate previous cycle range
+    final prevEnd = start.subtract(const Duration(seconds: 1));
+    final profile = ref.read(userProfileProvider);
+    final incomes = ref.read(incomeProvider);
+    final persistedProfile = UserProfileRepository().getProfile();
+    final profileSalaryDate = profile?.salaryDate ?? persistedProfile?.salaryDate;
+    final inferredIncomeSalaryDate = _inferSalaryDateFromIncome(incomes);
+    final salaryDate = _resolveSalaryDate(
+      profileSalaryDate: profileSalaryDate,
+      inferredIncomeSalaryDate: inferredIncomeSalaryDate,
+    );
+    final prevCycle = AppDateUtils.getCycleRange(salaryDate, prevEnd);
+    final prevStart = prevCycle['start']!;
+
+    // 2. Calculate SHIELD surplus from prev cycle
+    final transactions = ref.read(transactionProvider);
+    double spentShield = 0;
+    for (final tx in transactions) {
+      if (tx.type == 'expense' &&
+          tx.date.isAfter(prevStart.subtract(const Duration(seconds: 1))) &&
+          tx.date.isBefore(prevEnd.add(const Duration(seconds: 1)))) {
+        if (_mapCategoryToZone(tx.category) == 'shield') {
+          spentShield += tx.amount;
+        }
+      }
+    }
+
+    final target = ref.read(flowZoneProvider);
+    final totalIncome = incomes
+        .where((s) => s.isActive && (s.type == 'fixed_monthly' || s.type == 'passive'))
+        .fold(0.0, (sum, s) => sum + s.amount);
+    // Note: this assumes cicilan is same as current, which is a bit of an approximation
+    // in a real scenario we might want to track historical cicilan too.
+    final cicilan = ref.read(currentCicilanProvider);
+    final freeBudget = totalIncome - cicilan;
+    final targetShieldAmount = freeBudget * (target.shieldTarget / 100);
+
+    final surplus = targetShieldAmount - spentShield;
+
+    if (surplus > 0) {
+      // 3. Add to emergency fund
+      final notifier = ref.read(emergencyFundEntriesProvider.notifier);
+      await notifier.addEntry(
+        amount: surplus,
+        source: 'shield_carryover',
+        note: 'Sisa ZONE SHIELD periode ${AppDateUtils.formatToIndonesianDate(prevStart)} - ${AppDateUtils.formatToIndonesianDate(prevEnd)}',
+      );
+    }
+
+    // 4. Update last sync record
+    await prefs.setString(lastStartKey, start.toIso8601String());
+  }
 });
 
 final totalFixedIncomeProvider = Provider<double>((ref) {
@@ -155,9 +227,9 @@ final quadrantTrackerProvider = Provider<QuadrantTracker>((ref) {
 
 final enoughAnchorProvider = Provider<EnoughAnchor>((ref) {
   final profile = ref.watch(userProfileProvider);
-  // Future: fetch actual net worth and emergency fund from specialized providers/repos
+  final emergencyBalance = ref.watch(emergencyFundBalanceProvider);
   return EnoughAnchor(
-    currentEmergencyFund: 0.0, // Mock for now
+    currentEmergencyFund: emergencyBalance,
     emergencyFundTarget: profile?.emergencyFundTarget ?? 15000000,
     currentPassiveIncome: 0.0, // Mock for now
     monthlyPassiveTarget: profile?.monthlyPassiveTarget ?? 5000000,

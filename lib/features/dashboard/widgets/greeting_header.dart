@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../providers/visibility_provider.dart';
 
-class GreetingHeader extends StatelessWidget {
+class GreetingHeader extends ConsumerWidget {
   final String name;
 
   const GreetingHeader({super.key, required this.name});
@@ -16,7 +19,8 @@ class GreetingHeader extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isVisible = ref.watch(amountVisibilityProvider);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -33,7 +37,19 @@ class GreetingHeader extends StatelessWidget {
             Text('Selamat ${_getGreeting()}', style: AppTextStyles.heading1),
           ],
         ),
-        Container(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(
+                isVisible ? LucideIcons.eye : LucideIcons.eyeOff,
+                size: 20,
+                color: AppColors.textSecondary,
+              ),
+              onPressed: () => ref.read(amountVisibilityProvider.notifier).state = !isVisible,
+            ),
+            const SizedBox(width: 4),
+            Container(
           width: 48,
           height: 48,
           decoration: BoxDecoration(
@@ -52,6 +68,8 @@ class GreetingHeader extends StatelessWidget {
               ),
             ),
           ),
+            ),
+          ],
         ),
       ],
     );

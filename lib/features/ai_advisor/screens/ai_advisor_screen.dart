@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../widgets/action_confirmation_card.dart';
+import '../widgets/quick_action_buttons.dart';
 
 class AiAdvisorScreen extends ConsumerStatefulWidget {
   const AiAdvisorScreen({super.key});
@@ -132,6 +133,13 @@ class _AiAdvisorScreenState extends ConsumerState<AiAdvisorScreen> {
               },
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          QuickActionButtons(
+            onActionSelected: (action) {
+              ref.read(chatProvider.notifier).sendQuickAction(action);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
           _buildInputArea(isDark),
         ],
       ),

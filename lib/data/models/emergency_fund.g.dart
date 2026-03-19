@@ -1,44 +1,44 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'ai_cache.dart';
+part of 'emergency_fund.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class AiCacheAdapter extends TypeAdapter<AiCache> {
+class EmergencyFundEntryAdapter extends TypeAdapter<EmergencyFundEntry> {
   @override
-  final int typeId = 10;
+  final int typeId = 14;
 
   @override
-  AiCache read(BinaryReader reader) {
+  EmergencyFundEntry read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return AiCache(
-      cacheKey: fields[0] as String,
-      response: fields[1] as String,
-      createdAt: fields[2] as DateTime,
-      ttlMinutes: fields[3] as int,
-      lastAccessedAt: fields[4] as DateTime?,
+    return EmergencyFundEntry(
+      id: fields[0] as String,
+      amount: fields[1] as double,
+      source: fields[2] as String,
+      date: fields[3] as DateTime,
+      note: fields[4] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, AiCache obj) {
+  void write(BinaryWriter writer, EmergencyFundEntry obj) {
     writer
       ..writeByte(5)
       ..writeByte(0)
-      ..write(obj.cacheKey)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.response)
+      ..write(obj.amount)
       ..writeByte(2)
-      ..write(obj.createdAt)
+      ..write(obj.source)
       ..writeByte(3)
-      ..write(obj.ttlMinutes)
+      ..write(obj.date)
       ..writeByte(4)
-      ..write(obj.lastAccessedAt);
+      ..write(obj.note);
   }
 
   @override
@@ -47,7 +47,7 @@ class AiCacheAdapter extends TypeAdapter<AiCache> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AiCacheAdapter &&
+      other is EmergencyFundEntryAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

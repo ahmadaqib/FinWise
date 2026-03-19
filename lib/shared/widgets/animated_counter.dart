@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_animations.dart';
+import '../../../providers/visibility_provider.dart';
 
-class AnimatedCounter extends StatelessWidget {
+class AnimatedCounter extends ConsumerWidget {
   final double value;
   final String Function(double)? formatter;
   final TextStyle? style;
@@ -19,7 +21,8 @@ class AnimatedCounter extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isVisible = ref.watch(amountVisibilityProvider);
     final textStyle =
         style ?? AppTextStyles.monoLarge.copyWith(color: AppColors.primary);
 
@@ -31,6 +34,11 @@ class AnimatedCounter extends StatelessWidget {
         final text = formatter != null
             ? formatter!(currentValue)
             : currentValue.toStringAsFixed(0);
+
+        if (!isVisible) {
+          final prefix = text.startsWith('Rp') ? 'Rp ' : '';
+          return Text('$prefix••••••', style: textStyle);
+        }
 
         return Text(text, style: textStyle);
       },

@@ -13,6 +13,7 @@ import 'budget_provider.dart';
 import 'daily_limit_strategy_provider.dart';
 import 'transaction_provider.dart';
 import 'rpd_counter_provider.dart';
+import '../algorithms/local_prediction_engine.dart';
 
 final chatProvider = StateNotifierProvider<ChatNotifier, List<ChatMessage>>((
   ref,
@@ -137,7 +138,8 @@ FWS: ${context.currentFWS.toInt()}/1000 (${context.fwsBand})
 
 [LAYER 5: ANCHOR]
 Emergency Fund: ${pct(context.emergencyFundProgress)}
-Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
+Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100
+RPD: ${RpdCounter.usedToday}/20''';
   }
 
   // ── TRANSACTION LOG ──
@@ -355,6 +357,19 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
       ChatMessage(text: message, isUser: true, timestamp: DateTime.now()),
     ];
 
+    final localPrediction = _tryLocalPrediction(message);
+    if (localPrediction != null) {
+      state = [
+        ...state,
+        ChatMessage(
+          text: '$localPrediction\n\n*(Jawaban ini dihasilkan secara lokal untuk menghemat kuota AI)*',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      ];
+      return;
+    }
+
     isLoading = true;
     state = [...state];
 
@@ -394,7 +409,7 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
         ...state,
         ChatMessage(
           text:
-              "Kuota harian API sudah habis (${RpdCounter.usedToday}/20). Coba lagi besok.",
+              "Kuota harian AI (Gemini) sudah habis (${RpdCounter.usedToday}/20). \n\nKamu tetap bisa menggunakan tombol aksi cepat di bawah untuk mendapatkan prediksi lokal, atau tanya tentang budget/sisa uang.",
           isUser: false,
           timestamp: DateTime.now(),
         ),
@@ -482,14 +497,17 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
             ? textResponse
             : (response.text ?? 'Tidak ada respons.');
 
+        final footer = '\n\n*(AI: ${RpdCounter.usedToday + 1}/20)*';
+        final finalResponse = responseText + footer;
+
         // Cache the response
-        await cacheRepo.cacheResponse(cacheKey, responseText);
+        await cacheRepo.cacheResponse(cacheKey, finalResponse);
 
         isLoading = false;
         state = [
           ...state,
           ChatMessage(
-            text: responseText,
+            text: finalResponse,
             isUser: false,
             timestamp: DateTime.now(),
           ),
@@ -504,18 +522,30 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
         );
         if (!_isGeminiServiceError(fallbackText)) {
           await RpdCounter.increment();
-          await cacheRepo.cacheResponse(cacheKey, fallbackText);
-        }
+          final footer = '\n\n*(AI: ${RpdCounter.usedToday}/20)*';
+          final finalResponse = fallbackText + footer;
+          await cacheRepo.cacheResponse(cacheKey, finalResponse);
 
-        isLoading = false;
-        state = [
-          ...state,
-          ChatMessage(
-            text: fallbackText,
-            isUser: false,
-            timestamp: DateTime.now(),
-          ),
-        ];
+          isLoading = false;
+          state = [
+            ...state,
+            ChatMessage(
+              text: finalResponse,
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          ];
+        } else {
+          isLoading = false;
+          state = [
+            ...state,
+            ChatMessage(
+              text: fallbackText,
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          ];
+        }
       } catch (_) {
         isLoading = false;
         state = [
@@ -528,6 +558,66 @@ Anchor Score: ${context.enoughAnchorScore.toStringAsFixed(1)}/100''';
           ),
         ];
       }
+    }
+  }
+
+  String? _tryLocalPrediction(String message) {
+    final context = _ref.read(aiContextPackageProvider);
+    final transactions = _ref.read(transactionProvider);
+    final engine = LocalPredictionEngine(
+      context: context,
+      transactions: transactions,
+    );
+    return engine.getPrediction(message);
+  }
+
+  Future<void> sendQuickAction(String action) async {
+    String query = '';
+    String displayMessage = '';
+
+    switch (action) {
+      case 'limit':
+        final executor = AiActionExecutor(_ref);
+        final pendingAction = executor.parseAction('set_daily_limit_strategy', {});
+        final actionId = 'local_limit_${DateTime.now().millisecondsSinceEpoch}';
+        
+        state = [
+          ...state,
+          ChatMessage(text: 'Atur Limit', isUser: true, timestamp: DateTime.now()),
+          ChatMessage(
+            text: '', // Card handles description
+            isUser: false,
+            timestamp: DateTime.now(),
+            action: pendingAction,
+            actionId: actionId,
+          ),
+        ];
+        return;
+      case 'budget':
+        query = 'Berapa sisa budget saya?';
+        break;
+      case 'kategori':
+        query = 'Saya boros di mana?';
+        break;
+      case 'darurat':
+        query = 'Bagaimana status dana darurat saya?';
+        break;
+      case 'fws':
+        query = 'Berapa skor FinWise saya?';
+        break;
+    }
+
+    if (displayMessage.isNotEmpty) {
+      state = [
+        ...state,
+        ChatMessage(text: 'Reset Progress', isUser: true, timestamp: DateTime.now()),
+        ChatMessage(text: displayMessage, isUser: false, timestamp: DateTime.now()),
+      ];
+      return;
+    }
+
+    if (query.isNotEmpty) {
+      await sendMessage(query);
     }
   }
 

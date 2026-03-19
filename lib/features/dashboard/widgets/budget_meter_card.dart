@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/flat_card.dart';
+import '../../../../shared/widgets/hideable_amount_text.dart';
 
-class BudgetMeterCard extends StatelessWidget {
+class BudgetMeterCard extends ConsumerWidget {
   final double expense;
   final double remaining;
   final double totalBudget;
@@ -18,7 +20,7 @@ class BudgetMeterCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final percentage = totalBudget > 0 ? (expense / totalBudget * 100) : 0.0;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -80,8 +82,8 @@ class BudgetMeterCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        CurrencyFormatter.format(totalBudget),
+                      HideableAmountText(
+                        text: CurrencyFormatter.format(totalBudget),
                         style: AppTextStyles.monoLarge.copyWith(fontSize: 18),
                       ),
                     ],
@@ -117,8 +119,8 @@ class BudgetMeterCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label, style: AppTextStyles.caption),
-            Text(
-              CurrencyFormatter.format(amount),
+            HideableAmountText(
+              text: CurrencyFormatter.format(amount),
               style: AppTextStyles.monoSmall,
             ),
           ],

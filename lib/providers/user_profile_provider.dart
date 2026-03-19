@@ -20,6 +20,6 @@ class UserProfileNotifier extends StateNotifier<UserProfile?> {
 
   Future<void> saveProfile(UserProfile profile) async {
     await _repo.saveProfile(profile);
-    state = profile;
+    _load();
   }
 }

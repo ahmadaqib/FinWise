@@ -20,6 +20,7 @@ import 'data/models/cicilan_payment.dart';
 import 'data/models/flow_zone.dart';
 import 'data/models/ai_insight.dart';
 import 'data/models/fws_snapshot.dart';
+import 'data/models/emergency_fund.dart';
 
 import 'data/repositories/income_source_repository.dart';
 import 'data/repositories/transaction_repository.dart';
@@ -28,7 +29,14 @@ import 'data/repositories/alert_repository.dart';
 import 'data/repositories/ai_cache_repository.dart';
 import 'data/repositories/cicilan_repository.dart';
 import 'data/repositories/monthly_summary_repository.dart';
+import 'data/repositories/emergency_fund_repository.dart';
 import 'providers/rpd_counter_provider.dart';
+
+void _registerAdapter<T>(TypeAdapter<T> adapter) {
+  if (!Hive.isAdapterRegistered(adapter.typeId)) {
+    Hive.registerAdapter(adapter);
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,20 +46,21 @@ void main() async {
   await Hive.initFlutter();
 
   // Register Adapters
-  Hive.registerAdapter(UserProfileAdapter());
-  Hive.registerAdapter(IncomeSourceAdapter());
-  Hive.registerAdapter(IncomeChangeLogAdapter());
-  Hive.registerAdapter(TransactionAdapter());
-  Hive.registerAdapter(CategoryAdapter());
-  Hive.registerAdapter(MonthlySummaryAdapter());
-  Hive.registerAdapter(AlertConfigAdapter());
-  Hive.registerAdapter(SideProjectAdapter());
-  Hive.registerAdapter(CicilanAdapter());
-  Hive.registerAdapter(CicilanPaymentAdapter());
-  Hive.registerAdapter(AiCacheAdapter());
-  Hive.registerAdapter(FlowZoneAdapter());
-  Hive.registerAdapter(AiInsightAdapter());
-  Hive.registerAdapter(FWSSnapshotAdapter());
+  _registerAdapter(UserProfileAdapter());
+  _registerAdapter(IncomeSourceAdapter());
+  _registerAdapter(IncomeChangeLogAdapter());
+  _registerAdapter(TransactionAdapter());
+  _registerAdapter(CategoryAdapter());
+  _registerAdapter(MonthlySummaryAdapter());
+  _registerAdapter(AlertConfigAdapter());
+  _registerAdapter(SideProjectAdapter());
+  _registerAdapter(CicilanAdapter());
+  _registerAdapter(CicilanPaymentAdapter());
+  _registerAdapter(AiCacheAdapter());
+  _registerAdapter(FlowZoneAdapter());
+  _registerAdapter(AiInsightAdapter());
+  _registerAdapter(FWSSnapshotAdapter());
+  _registerAdapter(EmergencyFundEntryAdapter());
 
   // Initialize Repositories
   await UserProfileRepository().init();
@@ -61,6 +70,7 @@ void main() async {
   await AiCacheRepository().init();
   await CicilanRepository().init();
   await MonthlySummaryRepository().init();
+  await EmergencyFundRepository().init();
   await RpdCounter.init();
   await RpdCounter.cleanup();
 

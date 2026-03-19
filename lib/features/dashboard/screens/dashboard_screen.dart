@@ -8,6 +8,8 @@ import '../../../providers/daily_insight_provider.dart';
 import '../../../providers/cicilan_provider.dart';
 import '../../../data/repositories/user_profile_repository.dart';
 import '../../transactions/widgets/transaction_form.dart';
+import '../../game/game_screen.dart';
+import '../../../core/theme/app_colors.dart';
 
 // Dashboard Widgets
 import '../widgets/greeting_header.dart';
@@ -15,6 +17,8 @@ import '../../../services/archive_service.dart';
 import '../widgets/health_score_section.dart';
 import '../widgets/key_metrics_row.dart';
 import '../widgets/budget_meter_card.dart';
+import '../widgets/emergency_fund_card.dart';
+import '../../../providers/emergency_fund_provider.dart';
 import '../widgets/insight_card.dart';
 import '../widgets/cicilan_status_card.dart';
 import '../widgets/macro_info_carousel.dart';
@@ -77,6 +81,22 @@ class DashboardScreen extends ConsumerWidget {
 
               const SizedBox(height: AppSpacing.lg),
 
+              Consumer(
+                builder: (context, ref, child) {
+                  final current = ref.watch(emergencyFundBalanceProvider);
+                  final target = ref.watch(emergencyFundTargetProvider);
+                  
+                  if (target <= 0) return const SizedBox.shrink();
+
+                  return EmergencyFundCard(
+                    current: current,
+                    target: target,
+                  );
+                },
+              ),
+
+              const SizedBox(height: AppSpacing.lg),
+
               insightAsync.when(
                 data: (insight) => InsightCard(
                   insight:
@@ -122,6 +142,25 @@ class DashboardScreen extends ConsumerWidget {
               const MacroInfoCarousel(),
 
               const SizedBox(height: AppSpacing.xxl),
+
+              ElevatedButton.icon(
+                onPressed: () {
+                  final difficulty = (100 - healthScore) / 100.0;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => GameScreen(difficulty: difficulty),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryLight,
+                ),
+                icon: const Icon(LucideIcons.gamepad2, color: Colors.white),
+                label: const Text('Main Game: Flow Runner'),
+              ),
+
+              const SizedBox(height: AppSpacing.md),
 
               ElevatedButton.icon(
                 onPressed: () {

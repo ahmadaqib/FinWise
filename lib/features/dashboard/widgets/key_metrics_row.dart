@@ -4,6 +4,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/flat_card.dart';
 import '../../../../shared/widgets/animated_counter.dart';
+import '../../../../shared/widgets/hideable_amount_text.dart';
 
 class KeyMetricsRow extends StatelessWidget {
   final double remainingBudget;
@@ -71,8 +72,8 @@ class KeyMetricsRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  dailyLimitRemaining < 0
+                HideableAmountText(
+                  text: dailyLimitRemaining < 0
                       ? 'Melebihi limit ${CurrencyFormatter.format(dailyLimitRemaining.abs())}'
                       : 'Dari limit ${CurrencyFormatter.format(dailyLimitBase)}',
                   style: AppTextStyles.caption.copyWith(
